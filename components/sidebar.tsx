@@ -3,7 +3,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { FileText, Home, LogOut, Menu, Plus, Share2, Upload, X, RefreshCw, CheckCircle, Key } from "lucide-react"
+import { FileText, Home, LogOut, Menu, Plus, Share2, Upload, X, RefreshCw, CheckCircle, Key ,Video} from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 
 export function Sidebar() {
@@ -111,6 +111,9 @@ export function Sidebar() {
     { name: "Shared", path: "/shared", icon: Share2 },
     // { name: "Approval", path: "/documents/approval", icon: CheckCircle },
     { name: "License", path: "/documents/license", icon: Key },
+        { name : "Training Video", path : "/documents/video", icon: Video },
+
+
   ];
 
   if (pathname === "/login") {
