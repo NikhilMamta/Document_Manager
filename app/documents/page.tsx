@@ -942,6 +942,7 @@ const handleFilterChange = (value: string) => {
     }
 
     return (
+      
       <div className="p-4 sm:p-6 md:p-8 pt-16 md:pt-8 max-w-[1200px] mx-auto h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-indigo-50 to-white">
         <Toaster />
 
@@ -1043,9 +1044,9 @@ const handleFilterChange = (value: string) => {
             </div>
           </div>
         </div>
+        
 
-        {/* Scrollable content area */}
-       <div className="hidden md:flex flex-1 overflow-hidden">
+<div className="hidden md:flex flex-1 overflow-hidden">
   {isLoading && documents.length === 0 ? (
     <LoadingSpinner />
   ) : (
@@ -1067,333 +1068,329 @@ const handleFilterChange = (value: string) => {
             <Link href="/documents/add">
               <>
                 <Plus className="h-4 w-4 mr-2" />
-                Add New
+                Add New 
               </>
             </Link>
           </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-auto w-full">
-        <Table className="w-full">
-          <TableHeader className="bg-indigo-50 sticky top-0 z-10">
-            <TableRow>
-              <TableHead className="w-12 p-2 md:p-4">
-                <Checkbox
-                  checked={
-                    selectedDocs.length > 0 &&
-                    selectedDocs.length === filteredDocuments.length
-                  }
-                  onCheckedChange={() => {
-                    if (selectedDocs.length === filteredDocuments.length) {
-                      setSelectedDocs([]);
-                    } else {
-                      setSelectedDocs(filteredDocuments.map((doc) => doc.id));
+        {/* Horizontal scroll wrapper */}
+        <div className="overflow-x-auto">
+          <Table className="min-w-full w-max">
+            <TableHeader className="bg-indigo-50 sticky top-0 z-10">
+              <TableRow>
+                <TableHead className="w-12 p-2 md:p-4 whitespace-nowrap">
+                  <Checkbox
+                    checked={
+                      selectedDocs.length > 0 &&
+                      selectedDocs.length === filteredDocuments.length
                     }
-                  }}
-                />
-              </TableHead>
-              <TableHead className="w-20 p-2 md:p-4">Actions</TableHead>
-              <TableHead className="w-24 p-2 md:p-4">Serial No</TableHead>
-              <TableHead className="min-w-[180px] p-2 md:p-4">
-                Document Name
-              </TableHead>
-              <TableHead className="min-w-[120px] p-2 md:p-4">
-                Document Type
-              </TableHead>
-              <TableHead className="min-w-[100px] hidden md:table-cell p-2 md:p-4">
-                Category
-              </TableHead>
-              <TableHead className="min-w-[120px] hidden md:table-cell p-2 md:p-4">
-                Name
-              </TableHead>
-              <TableHead className="min-w-[180px] hidden md:table-cell p-2 md:p-4">
-                Renewal
-              </TableHead>
-              <TableHead className="w-12 hidden lg:table-cell p-2 md:p-4">
-                Image
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredDocuments.length > 0 ? (
-              filteredDocuments.map((doc) => (
-                <TableRow
-                  key={doc.id}
-                  className="hover:bg-indigo-50/50"
-                >
-                            <TableCell className="p-2 md:p-4">
-                              <Checkbox
-                                checked={selectedDocs.includes(doc.id)}
-                                onCheckedChange={() =>
-                                  handleCheckboxChange(doc.id)
-                                }
-                              />
-                            </TableCell>
-
-                            <TableCell className="text-right p-2 md:p-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Open menu</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="border-indigo-100"
-                                >
-                                  {currentUserRole?.toLowerCase() ===
-                                    "admin" && (
-                                    <>
-                                      <DropdownMenuItem
-                                        className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
-                                        onClick={() => {
-                                          if (selectedDocs.length === 0) {
-                                            setSelectedDocs([doc.id]);
-                                          }
-                                          setEmailData({
-                                            to: "",
-                                            name: "",
-                                            subject: "",
-                                            message: "",
-                                          });
-                                          setShareMethod("email");
-                                        }}
-                                      >
-                                        <Mail className="h-4 w-4 mr-2 text-indigo-500" />
-                                        Email
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
-                                        onClick={() => {
-                                          if (selectedDocs.length === 0) {
-                                            setSelectedDocs([doc.id]);
-                                          }
-                                          setWhatsappNumber(doc.mobile || "");
-                                          setShareMethod("whatsapp");
-                                        }}
-                                      >
-                                        <Smartphone className="h-4 w-4 mr-2 text-indigo-500" />
-                                        WhatsApp
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
-                                        onClick={() => {
-                                          if (selectedDocs.length === 0) {
-                                            setSelectedDocs([doc.id]);
-                                          }
-                                          setEmailData({
-                                            to: "",
-                                            name: "",
-                                            subject: "",
-                                            message: "",
-                                          });
-                                          setShareMethod("email");
-                                          setShareMethod("both");
-                                        }}
-                                      >
-                                        <Share2 className="h-4 w-4 mr-2 text-indigo-500" />
-                                        Share Both
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  <DropdownMenuItem
-                                    className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
-                                    onClick={() =>
-                                      handleDownloadDocument(
-                                        doc.imageUrl,
-                                        doc.name
-                                      )
-                                    }
-                                  >
-                                    <Download className="h-4 w-4 mr-2 text-indigo-500" />
-                                    Download
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600"
-                                    onClick={() => handleDeleteDocument(doc.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-
-                            <TableCell className="p-2 md:p-4 font-mono text-sm">
-                              {doc.serialNo || "-"}
-                            </TableCell>
-                            <TableCell className="p-2 md:p-4">
-                              <div className="flex items-center min-w-0">
-                                {doc.category === "Personal" ? (
-                                  <User className="h-4 w-4 mr-2 text-indigo-500 flex-shrink-0" />
-                                ) : doc.category === "Company" ? (
-                                  <Briefcase className="h-4 w-4 mr-2 text-blue-500 flex-shrink-0" />
-                                ) : (
-                                  <Users className="h-4 w-4 mr-2 text-purple-500 flex-shrink-0" />
-                                )}
-                                <div className="min-w-0">
-                                  <div className="font-medium truncate text-sm md:text-base">
-                                    {doc.name}
-                                  </div>
-                                  <div className="md:hidden text-xs text-gray-500 truncate">
-                                    {doc.serialNo} • {doc.category} •{" "}
-                                    {doc.company}
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="p-2 md:p-4">
-                              <Badge
-                                variant="outline"
-                                className="text-xs bg-indigo-50 text-indigo-700"
-                              >
-                                {doc.documentType || "N/A"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell p-2 md:p-4">
-                              <Badge
-                                className={`${
-                                  doc.category === "Personal"
-                                    ? "bg-indigo-100 text-indigo-800"
-                                    : doc.category === "Company"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-purple-100 text-purple-800"
-                                }`}
-                              >
-                                {doc.category || "N/A"}
-                              </Badge>
-                            </TableCell>
-                            {/* <TableCell className="hidden md:table-cell p-2 md:p-4">
-                              {doc.company || "-"}
-                            </TableCell> */}
-                            <TableCell className="hidden md:table-cell p-2 md:p-4">
-                              {doc.personName || "-"}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell p-2 md:p-4">
-                              {editingRenewalDocId === doc.id ? (
-                                <div className="flex flex-col gap-2 items-start max-w-[180px]">
-                                  <Checkbox
-                                    id={`needsRenewalEdit-${doc.id}`}
-                                    checked={tempNeedsRenewal}
-                                    onCheckedChange={(checked: boolean) => {
-                                      setTempNeedsRenewal(checked);
-                                      if (!checked)
-                                        setTempRenewalDate(undefined);
-                                    }}
-                                    className="border-indigo-300"
-                                  />
-                                  <label
-                                    htmlFor={`needsRenewalEdit-${doc.id}`}
-                                    className="text-xs font-medium mr-2"
-                                  >
-                                    Needs Renewal
-                                  </label>
-                                  {tempNeedsRenewal && (
-                                    <DatePicker
-                                      value={tempRenewalDate}
-                                      onChange={(date) =>
-                                        setTempRenewalDate(date)
-                                      }
-                                      placeholder="Select date"
-                                      className="h-8 text-xs"
-                                    />
-                                  )}
-                                  <div className="flex gap-1 mt-1">
-                                    <Button
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() =>
-                                        handleSaveRenewalDate(doc.id)
-                                      }
-                                      className="h-7 px-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
-                                      disabled={isLoading}
-                                    >
-                                      <Check className="h-3 w-3 mr-1" /> Save
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="xs"
-                                      onClick={handleCancelRenewalEdit}
-                                      className="h-7 px-2 text-indigo-700 hover:bg-indigo-50"
-                                      disabled={isLoading}
-                                    >
-                                      <XIcon className="h-3 w-3 mr-1" /> Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : doc.needsRenewal ? (
-                                <div className="flex items-center">
-                                  <Badge
-                                    className={`flex items-center gap-1 ${
-                                      isDatePastToday(doc.renewalDate)
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-amber-100 text-amber-800"
-                                    }`}
-                                  >
-                                    <RefreshCw className="h-3 w-3" />
-                                    <span
-                                      className={`font-mono text-xs ${
-                                        isDatePastToday(doc.renewalDate)
-                                          ? "text-red-600"
-                                          : ""
-                                      }`}
-                                    >
-                                      {doc.renewalDate || "Required"}
-                                    </span>
-                                  </Badge>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500 text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell p-2 md:p-4">
-                              <a
-                                href={doc.imageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ImageIcon className="h-5 w-5 mr-1 text-indigo-600" />
-                              </a>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell
-                            colSpan={12}
-                            className="text-center py-8 text-gray-500"
-                          >
-                            {searchTerm || currentFilter !== "All" ? (
-                              <>No documents found matching your criteria.</>
-                            ) : (
-                              <>
-                                <div className="flex flex-col items-center justify-center py-8">
-                                  <FileText className="h-12 w-12 text-indigo-200 mb-4" />
-                                  <p className="mb-4">No documents found.</p>
-                                  <Button
-                                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
-                                    asChild
-                                  >
-                                    <Link href="/documents/add">
-                                      <>
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Add New Document
-                                      </>
-                                    </Link>
-                                  </Button>
-                                </div>
-                              </>
-                            )}
-                                    </TableCell>
+                    onCheckedChange={() => {
+                      if (selectedDocs.length === filteredDocuments.length) {
+                        setSelectedDocs([]);
+                      } else {
+                        setSelectedDocs(filteredDocuments.map((doc) => doc.id));
+                      }
+                    }}
+                  />
+                </TableHead>
+                <TableHead className="w-20 p-2 md:p-4 whitespace-nowrap">Actions</TableHead>
+                <TableHead className="min-w-[100px] p-2 md:p-4 whitespace-nowrap">Serial No</TableHead>
+                <TableHead className="min-w-[200px] p-2 md:p-4 whitespace-nowrap">
+                  Document Name
+                </TableHead>
+                <TableHead className="min-w-[150px] p-2 md:p-4 whitespace-nowrap">
+                  Document Type
+                </TableHead>
+                <TableHead className="min-w-[120px] p-2 md:p-4 whitespace-nowrap">
+                  Category
+                </TableHead>
+                <TableHead className="min-w-[150px] p-2 md:p-4 whitespace-nowrap">
+                  Name
+                </TableHead>
+                <TableHead className="min-w-[200px] p-2 md:p-4 whitespace-nowrap">
+                  Renewal
+                </TableHead>
+                <TableHead className="w-12 p-2 md:p-4 whitespace-nowrap">
+                  Image
+                </TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredDocuments.length > 0 ? (
+                filteredDocuments.map((doc) => (
+                  <TableRow
+                    key={doc.id}
+                    className="hover:bg-indigo-50/50"
+                  >
+                    <TableCell className="p-2 md:p-4">
+                      <Checkbox
+                        checked={selectedDocs.includes(doc.id)}
+                        onCheckedChange={() =>
+                          handleCheckboxChange(doc.id)
+                        }
+                      />
+                    </TableCell>
+
+                    <TableCell className="text-right p-2 md:p-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="border-indigo-100"
+                        >
+                          {currentUserRole?.toLowerCase() ===
+                            "admin" && (
+                            <>
+                              <DropdownMenuItem
+                                className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => {
+                                  if (selectedDocs.length === 0) {
+                                    setSelectedDocs([doc.id]);
+                                  }
+                                  setEmailData({
+                                    to: "",
+                                    name: "",
+                                    subject: "",
+                                    message: "",
+                                  });
+                                  setShareMethod("email");
+                                }}
+                              >
+                                <Mail className="h-4 w-4 mr-2 text-indigo-500" />
+                                Email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => {
+                                  if (selectedDocs.length === 0) {
+                                    setSelectedDocs([doc.id]);
+                                  }
+                                  setWhatsappNumber(doc.mobile || "");
+                                  setShareMethod("whatsapp");
+                                }}
+                              >
+                                <Smartphone className="h-4 w-4 mr-2 text-indigo-500" />
+                                WhatsApp
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => {
+                                  if (selectedDocs.length === 0) {
+                                    setSelectedDocs([doc.id]);
+                                  }
+                                  setEmailData({
+                                    to: "",
+                                    name: "",
+                                    subject: "",
+                                    message: "",
+                                  });
+                                  setShareMethod("email");
+                                  setShareMethod("both");
+                                }}
+                              >
+                                <Share2 className="h-4 w-4 mr-2 text-indigo-500" />
+                                Share Both
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            className="cursor-pointer text-indigo-700 hover:bg-indigo-50"
+                            onClick={() =>
+                              handleDownloadDocument(
+                                doc.imageUrl,
+                                doc.name
+                              )
+                            }
+                          >
+                            <Download className="h-4 w-4 mr-2 text-indigo-500" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer text-red-600 hover:bg-red-50 focus:text-red-600"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+
+                    <TableCell className="p-2 md:p-4 font-mono text-sm">
+                      {doc.serialNo || "-"}
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      <div className="flex items-center min-w-0">
+                        {doc.category === "Personal" ? (
+                          <User className="h-4 w-4 mr-2 text-indigo-500 flex-shrink-0" />
+                        ) : doc.category === "Company" ? (
+                          <Briefcase className="h-4 w-4 mr-2 text-blue-500 flex-shrink-0" />
+                        ) : (
+                          <Users className="h-4 w-4 mr-2 text-purple-500 flex-shrink-0" />
+                        )}
+                        <div className="font-medium text-sm md:text-base">
+                          {doc.name}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-indigo-50 text-indigo-700 whitespace-nowrap"
+                      >
+                        {doc.documentType || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      <Badge
+                        className={`whitespace-nowrap ${
+                          doc.category === "Personal"
+                            ? "bg-indigo-100 text-indigo-800"
+                            : doc.category === "Company"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
+                        {doc.category || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      {doc.personName || "-"}
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      {editingRenewalDocId === doc.id ? (
+                        <div className="flex flex-col gap-2 items-start min-w-[180px]">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`needsRenewalEdit-${doc.id}`}
+                              checked={tempNeedsRenewal}
+                              onCheckedChange={(checked: boolean) => {
+                                setTempNeedsRenewal(checked);
+                                if (!checked)
+                                  setTempRenewalDate(undefined);
+                              }}
+                              className="border-indigo-300"
+                            />
+                            <label
+                              htmlFor={`needsRenewalEdit-${doc.id}`}
+                              className="text-xs font-medium whitespace-nowrap"
+                            >
+                              Needs Renewal
+                            </label>
+                          </div>
+                          {tempNeedsRenewal && (
+                            <DatePicker
+                              value={tempRenewalDate}
+                              onChange={(date) =>
+                                setTempRenewalDate(date)
+                              }
+                              placeholder="Select date"
+                              className="h-8 text-xs"
+                            />
+                          )}
+                          <div className="flex gap-1 mt-1">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() =>
+                                handleSaveRenewalDate(doc.id)
+                              }
+                              className="h-7 px-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap"
+                              disabled={isLoading}
+                            >
+                              <Check className="h-3 w-3 mr-1" /> Save
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={handleCancelRenewalEdit}
+                              className="h-7 px-2 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap"
+                              disabled={isLoading}
+                            >
+                              <XIcon className="h-3 w-3 mr-1" /> Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : doc.needsRenewal ? (
+                        <div className="flex items-center">
+                          <Badge
+                            className={`flex items-center gap-1 whitespace-nowrap ${
+                              isDatePastToday(doc.renewalDate)
+                                ? "bg-red-100 text-red-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            <span
+                              className={`font-mono text-xs ${
+                                isDatePastToday(doc.renewalDate)
+                                  ? "text-red-600"
+                                  : ""
+                              }`}
+                            >
+                              {doc.renewalDate || "Required"}
+                            </span>
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="p-2 md:p-4">
+                      
+                       <a href={doc.imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ImageIcon className="h-5 w-5 text-indigo-600" />
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={9}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    {searchTerm || currentFilter !== "All" ? (
+                      <>No documents found matching your criteria.</>
+                    ) : (
+                      <>
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <FileText className="h-12 w-12 text-indigo-200 mb-4" />
+                          <p className="mb-4">No documents found.</p>
+                          <Button
+                            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                            asChild
+                          >
+                            <Link href="/documents/add">
+                              <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add New Document
+                              </>
+                            </Link>
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   )}
@@ -1755,5 +1752,6 @@ const handleFilterChange = (value: string) => {
           </DialogContent>
         </Dialog>
       </div>
+      
     );
   }

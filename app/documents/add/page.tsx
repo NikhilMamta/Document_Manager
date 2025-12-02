@@ -44,6 +44,15 @@ export default function AddDocument() {
   const [documentTypes, setDocumentTypes] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
+
+
+  const PARENT_FOLDER_IDS = {
+    Personal: "1VEObp-HroEBBws6LMwkIssdJSbxwhlz6",  // Personal folder ki ID yahan daalo
+    Company: "1DE9DMk4dNih9PX0AK1dbkru-Oro09Whi",    // Company folder ki ID yahan daalo
+    Director: "1XPW294de3Pg_O5hMRytvzJzl3IVIsX93"   // Director folder ki ID yahan daalo
+  };
+
+
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/login");
@@ -221,9 +230,13 @@ export default function AddDocument() {
     }
   };
 
-  const uploadFileToGoogleDrive = async (file: File): Promise<string> => {
+  const uploadFileToGoogleDrive = async (
+    file: File, 
+    documentType: DocumentType, 
+    entityName: string
+  ): Promise<string> => {
     const scriptUrl = "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec";
-
+  
     try {
       const base64String = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -235,25 +248,29 @@ export default function AddDocument() {
         };
         reader.onerror = error => reject(error);
       });
-
+  
+      // Parent folder ID select karo category ke basis pe
+      const parentFolderId = PARENT_FOLDER_IDS[documentType];
+  
       const formData = new FormData();
       formData.append('action', 'uploadFile');
       formData.append('fileName', file.name);
       formData.append('mimeType', file.type);
-      formData.append('folderId', '13TaqHAskPZBkNRW2-ODbaLLvndBWFC6d');
+      formData.append('parentFolderId', parentFolderId);  // Parent folder ID
+      formData.append('entityFolderName', entityName);    // Entity name se folder banega
       formData.append('base64Data', base64String);
-
+  
       const response = await fetch(scriptUrl, {
         method: 'POST',
         body: formData,
       });
-
+  
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
+  
       const result = await response.json();
-
+  
       if (result.success && result.fileUrl) {
         return result.fileUrl;
       } else {
@@ -264,6 +281,7 @@ export default function AddDocument() {
       throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+  
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -316,12 +334,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       }
 
       console.log(`Generated serial number: ${serialNumber} for document: ${file.name}`);
-
       let fileLink = "";
       if (file.file) {
-        fileLink = await uploadFileToGoogleDrive(file.file);
+        fileLink = await uploadFileToGoogleDrive(file.file, file.documentType, file.entityName);
       }
-
       // Combine renewal date and time into a single string
       const renewalDateTime = file.needsRenewal && file.renewalDate && file.renewalTime 
         ? `${formatDateToDDMMYYYY(file.renewalDate)} ${file.renewalTime}`
