@@ -249,15 +249,15 @@ export default function AddDocument() {
         reader.onerror = error => reject(error);
       });
   
-      // Parent folder ID select karo category ke basis pe
-      const parentFolderId = PARENT_FOLDER_IDS[documentType];
+      // Main folder ID (single parent folder for all documents)
+      const mainFolderId = "13TaqHAskPZBkNRW2-ODbaLLvndBWFC6d"; // Replace with your main folder ID
   
       const formData = new FormData();
       formData.append('action', 'uploadFile');
       formData.append('fileName', file.name);
       formData.append('mimeType', file.type);
-      formData.append('parentFolderId', parentFolderId);  // Parent folder ID
-      formData.append('entityFolderName', entityName);    // Entity name se folder banega
+      formData.append('parentFolderId', mainFolderId);
+      formData.append('entityFolderName', entityName);
       formData.append('base64Data', base64String);
   
       const response = await fetch(scriptUrl, {
