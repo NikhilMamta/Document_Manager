@@ -1104,10 +1104,10 @@ const handleFilterChange = (value: string) => {
                   Document Type
                 </TableHead>
                 <TableHead className="min-w-[120px] p-2 md:p-4 whitespace-nowrap">
-                  Category
+                  Company
                 </TableHead>
                 <TableHead className="min-w-[150px] p-2 md:p-4 whitespace-nowrap">
-                  Name
+                  Description
                 </TableHead>
                 <TableHead className="min-w-[200px] p-2 md:p-4 whitespace-nowrap">
                   Renewal
