@@ -64,7 +64,7 @@ export default function AddDocument() {
 
   const fetchMasterData = async () => {
     try {
-      const scriptUrl = "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec";
+      const scriptUrl = "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec";
       const response = await fetch(`${scriptUrl}?sheet=Master&action=fetch`);
       
       if (!response.ok) {
@@ -235,7 +235,7 @@ export default function AddDocument() {
     documentType: DocumentType, 
     entityName: string
   ): Promise<string> => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec";
   
     try {
       const base64String = await new Promise<string>((resolve, reject) => {
@@ -250,7 +250,7 @@ export default function AddDocument() {
       });
   
       // Main folder ID
-      const mainFolderId = "13TaqHAskPZBkNRW2-ODbaLLvndBWFC6d";
+      const mainFolderId = "11V1EIg3Aa4xKrbHjVz6c1M-CocM-SUIr";
   
       const formData = new FormData();
       formData.append('action', 'uploadFile');
@@ -288,7 +288,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     setIsSubmitting(true);
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec";
 
     const serialResponse = await fetch(`${scriptUrl}?action=getNextSerials`);
 

@@ -197,7 +197,7 @@ const handleShareWhatsApp = async (number: string) => {
     );
 
     const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec",
+      "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
       {
         method: "POST",
         body: formData,
@@ -476,7 +476,7 @@ useEffect(() => {
   }
     try {
       const docsResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec?sheet=Documents"
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec?sheet=Documents"
       );
       const docsData = await docsResponse.json();
 
@@ -553,11 +553,11 @@ useEffect(() => {
       formData.append("action", "uploadFile");
       formData.append("fileName", file.name);
       formData.append("mimeType", file.type);
-      formData.append("folderId", "13TaqHAskPZBkNRW2-ODbaLLvndBWFC6d");
+      formData.append("folderId", "11V1EIg3Aa4xKrbHjVz6c1M-CocM-SUIr");
       formData.append("base64Data", base64String);
 
       const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec",
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
         {
           method: "POST",
           body: formData,
@@ -654,7 +654,7 @@ useEffect(() => {
       formData.append("imageUrl", newImageUrl || "");
 
       const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbxspyd0vmsjNnBkXLQmGc8FG-AQUV1cI1FDl4dZKfLgDSgjMGHwJ-VUkSIvXDWeXQn73A/exec",
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
         {
           method: "POST",
           body: formData,
