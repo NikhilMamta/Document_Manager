@@ -59,6 +59,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+// ================== TYPES ==================
+
 interface Document {
   id: number;
   timestamp: string;
@@ -76,14 +78,29 @@ interface Document {
   mobile: string;
 }
 
+type DocumentFilter = "Renewal" | "Overdue" | "Today" | "Upcoming" | "All";
+
+interface AppToastOptions {
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
+}
+
+// helper: variant ko ignore karke existing toast use karega
+const showToast = (options: AppToastOptions) => {
+  const { variant: _variant, ...rest } = options;
+  toast(rest);
+};
+
+// ================== HELPERS ==================
+
 const formatDateToDDMMYYYY = (dateString: string): string => {
   if (!dateString) return "";
 
   try {
-    // Handle case where date includes time (format: "dd/MM/yyyy HH:mm")
     if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{1,2}$/)) {
       const [datePart, timePart] = dateString.split(" ");
-      return `${datePart} ${timePart}`; // Return both date and time parts
+      return `${datePart} ${timePart}`;
     }
 
     let date: Date;
@@ -144,14 +161,16 @@ const formatDateTimeDisplay = (dateString: string): string => {
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
     const seconds = date.getSeconds().toString().padStart(2, "0");
-    
 
     if (hours === "00" && minutes === "00" && seconds === "00") {
       const now = new Date();
       return `${day}/${month}/${year} || ${now
         .getHours()
         .toString()
-        .padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now
+        .padStart(2, "0")}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}:${now
         .getSeconds()
         .toString()
         .padStart(2, "0")}`;
@@ -173,95 +192,6 @@ const formatImageUrl = (url: string): string => {
   }
   return url;
 };
-const[Loding,setIsLoading]=useState();
-const handleShareWhatsApp = async (number: string) => {
-  try {
-    setIsLoading(true);
-
-    // Create FormData
-    const formData = new FormData();
-    formData.append("action", "shareViaWhatsApp");
-    formData.append("recipientNumber", number);
-    formData.append(
-      "documents",
-      JSON.stringify(
-        selectedDocuments.map((doc) => ({
-          id: doc.id.toString(),
-          name: doc.name,
-          serialNo: doc.serialNo,
-          documentType: doc.documentType,
-          category: doc.category,
-          imageUrl: doc.imageUrl,
-          sourceSheet: doc.sourceSheet,
-        }))
-      )
-    );
-
-    const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const textResponse = await response.text();
-    console.log("Full response:", textResponse);
-
-    toast({
-      title: "Success",
-      description: "WhatsApp message sent successfully!",
-    });
-    setSelectedDocs([]);
-    return true;
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    toast({
-      title: "Error",
-      description: "Network error. Please check your connection.",
-      variant: "destructive",
-    });
-    return false;
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const handleDownloadDocument = (imageUrl: string, documentName: string) => {
-  if (!imageUrl) {
-    toast({
-      title: "No image available",
-      description: "This document doesn't have an image to download",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  let downloadUrl = imageUrl;
-
-  if (imageUrl.includes("drive.google.com")) {
-    const fileId = imageUrl.match(/[-\w]{25,}/)?.[0];
-    if (fileId) {
-      downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-  }
-
-  const link = document.createElement("a");
-  link.href = downloadUrl;
-  link.setAttribute(
-    "download",
-    `${documentName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg` ||
-      "document.jpg"
-  );
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  toast({
-    title: "Download started",
-    description: `Downloading ${documentName}`,
-  });
-};
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -279,6 +209,8 @@ const LoadingSpinner = () => (
   </div>
 );
 
+// ================== MAIN COMPONENT ==================
+
 export default function DocumentsList() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -287,12 +219,13 @@ export default function DocumentsList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoggedIn, userRole, userName } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [mounted, setMounted] = useState(false);
-  const [currentFilter, setCurrentFilter] = useState<DocumentFilter>("Renewal");
+  const [currentFilter, setCurrentFilter] =
+    useState<DocumentFilter>("Renewal");
   const [tempRenewalTime, setTempRenewalTime] = useState<string>("");
   const [editingRenewalDoc, setEditingRenewalDoc] = useState<Document | null>(
     null
@@ -301,16 +234,19 @@ export default function DocumentsList() {
     undefined
   );
   const [tempNeedsRenewal, setTempNeedsRenewal] = useState<boolean>(false);
-  const [imagePopup, setImagePopup] = useState<{ open: boolean; url: string }>({
-    open: false,
-    url: "",
-  });
+  const [imagePopup, setImagePopup] = useState<{ open: boolean; url: string }>(
+    {
+      open: false,
+      url: "",
+    }
+  );
+
+  // ================== LOGIC (UNCHANGED) ==================
 
   const isRenewalExpired = (renewalDate: string): boolean => {
     if (!renewalDate) return false;
 
     try {
-      // Split date and time if present
       const [datePart, timePart] = renewalDate.split(" ");
       let dateParts: number[];
 
@@ -331,7 +267,6 @@ export default function DocumentsList() {
         dateParts[0]
       );
 
-      // If time is included, add it to the date
       if (timePart) {
         const [hours, minutes] = timePart.split(":").map(Number);
         renewalDateObj.setHours(hours, minutes, 0, 0);
@@ -369,7 +304,6 @@ export default function DocumentsList() {
         dateParts[0]
       );
 
-      // If time is included, add it to the date
       if (timePart) {
         const [hours, minutes] = timePart.split(":").map(Number);
         renewalDateObj.setHours(hours, minutes, 0, 0);
@@ -449,10 +383,10 @@ export default function DocumentsList() {
 
   const handleViewImage = (url: string) => {
     try {
-      let imageUrl = formatImageUrl(url);
+      const imageUrl = formatImageUrl(url);
       window.open(imageUrl, "_blank");
     } catch (error) {
-      toast({
+      showToast({
         title: "Error",
         description: "Could not open image",
         variant: "destructive",
@@ -460,28 +394,17 @@ export default function DocumentsList() {
     }
   };
 
-useEffect(() => {
-  if (!isLoggedIn) {
-    router.push("/login");
-    return;
-  }
-  setMounted(true);
-  fetchDocuments(); // Always fetch on mount if logged in
-}, [isLoggedIn, router]);
-
-
   const fetchDocuments = async () => {
-  // Only show loading if it's the initial load
-  if (documents.length === 0) {
-    setIsLoading(true);
-  }
+    if (documents.length === 0) {
+      setIsLoading(true);
+    }
     try {
       const docsResponse = await fetch(
         "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec?sheet=Documents"
       );
       const docsData = await docsResponse.json();
 
-      let docs = [];
+      let docs: Document[] = [];
       if (docsData.success && docsData.data) {
         docs = docsData.data
           .slice(1)
@@ -526,14 +449,14 @@ useEffect(() => {
       setDocuments(docs);
     } catch (error) {
       console.error("Error fetching documents:", error);
-      toast({
+      showToast({
         title: "Error",
         description: "Failed to fetch documents",
         variant: "destructive",
       });
     } finally {
-    setIsLoading(false);
-  }
+      setIsLoading(false);
+    }
   };
 
   const handleImageUpload = async (file: File) => {
@@ -584,7 +507,9 @@ useEffect(() => {
     }
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedImage(file);
@@ -615,7 +540,7 @@ useEffect(() => {
           newImageUrl = uploadedUrl;
         } catch (uploadError) {
           console.error("Image upload error:", uploadError);
-          toast({
+          showToast({
             title: "Upload Error",
             description: "Failed to upload image. Please try again.",
             variant: "destructive",
@@ -625,7 +550,7 @@ useEffect(() => {
       }
 
       if (tempNeedsRenewal && !newImageUrl) {
-        toast({
+        showToast({
           title: "Error",
           description: "Image is required for document renewal",
           variant: "destructive",
@@ -633,16 +558,15 @@ useEffect(() => {
         return;
       }
 
-      // Format the date as DD/MM/YYYY
       const formattedDate = tempRenewalDate
-        ? `${tempRenewalDate.getDate().toString().padStart(2, "0")}/${(
-            tempRenewalDate.getMonth() + 1
-          )
+        ? `${tempRenewalDate
+            .getDate()
+            .toString()
+            .padStart(2, "0")}/${(tempRenewalDate.getMonth() + 1)
             .toString()
             .padStart(2, "0")}/${tempRenewalDate.getFullYear()}`
         : "";
 
-      // Combine date and time in the format "DD/MM/YYYY HH:mm"
       const renewalDateTime = `${formattedDate}${
         tempRenewalTime ? " " + tempRenewalTime : ""
       }`;
@@ -691,12 +615,11 @@ useEffect(() => {
           )
       );
 
-      toast({
+      showToast({
         title: "Success",
         description: `Renewal updated successfully`,
       });
 
-      // Close the dialog
       setEditingRenewalDoc(null);
       setTempRenewalDate(undefined);
       setTempNeedsRenewal(false);
@@ -706,7 +629,7 @@ useEffect(() => {
       setTempRenewalTime("");
     } catch (error) {
       console.error("Error updating renewal:", error);
-      toast({
+      showToast({
         title: "Error",
         description:
           error instanceof Error
@@ -726,22 +649,20 @@ useEffect(() => {
     setSelectedImage(null);
     setPreviewImage(null);
     setTempImageUrl(null);
+    setTempRenewalTime("");
   };
 
   const handleEditRenewalClick = (doc: Document) => {
     setEditingRenewalDoc(doc);
 
-    // Parse the existing renewal date and time
     if (doc.renewalDate) {
       const [datePart, timePart] = doc.renewalDate.split(" ");
 
-      // Parse the date part (DD/MM/YYYY)
       if (datePart) {
         const [day, month, year] = datePart.split("/");
         setTempRenewalDate(new Date(`${year}-${month}-${day}`));
       }
 
-      // Set the time part if it exists
       if (timePart) {
         setTempRenewalTime(timePart);
       }
@@ -765,11 +686,10 @@ useEffect(() => {
       );
 
     if (!doc.needsRenewal || !doc.renewalDate) {
-      return false; // Skip documents that don't need renewal or have no renewal date
+      return false;
     }
 
     try {
-      // Parse the renewal date
       const [datePart, timePart] = doc.renewalDate.split(" ");
       let dateParts: number[];
 
@@ -778,7 +698,7 @@ useEffect(() => {
       } else {
         dateParts = datePart.split("-").map(Number);
         if (dateParts.length === 3) {
-          dateParts = [dateParts[2], dateParts[1], dateParts[0]]; // Convert from YYYY-MM-DD to DD-MM-YYYY
+          dateParts = [dateParts[2], dateParts[1], dateParts[0]];
         }
       }
 
@@ -790,7 +710,6 @@ useEffect(() => {
         dateParts[0]
       );
 
-      // If time is included, add it to the date
       if (timePart) {
         const [hours, minutes] = timePart.split(":").map(Number);
         renewalDate.setHours(hours, minutes, 0, 0);
@@ -836,17 +755,104 @@ useEffect(() => {
     );
   };
 
-const handleFilterChange = (value: DocumentFilter) => {
-  setCurrentFilter(value);
-  const newSearchParams = new URLSearchParams(searchParams.toString());
-  if (value === "All") {
-    newSearchParams.delete("filter");
-  } else {
-    newSearchParams.set("filter", value);
-  }
-  router.replace(`?${newSearchParams.toString()}`, { scroll: false });
-  // No loading state change here
-};
+  const handleFilterChange = (value: DocumentFilter) => {
+    setCurrentFilter(value);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    if (value === "All") {
+      newSearchParams.delete("filter");
+    } else {
+      newSearchParams.set("filter", value);
+    }
+    router.replace(`?${newSearchParams.toString()}`, { scroll: false });
+  };
+
+  const handleShareWhatsApp = async (number: string) => {
+    try {
+      setIsLoading(true);
+
+      const formData = new FormData();
+      formData.append("action", "shareViaWhatsApp");
+      formData.append("recipientNumber", number);
+      formData.append(
+        "documents",
+        JSON.stringify(
+          selectedDocuments.map((doc) => ({
+            id: doc.id.toString(),
+            name: doc.name,
+            serialNo: doc.serialNo,
+            documentType: doc.documentType,
+            category: doc.category,
+            imageUrl: doc.imageUrl,
+            sourceSheet: (doc as any).sourceSheet,
+          }))
+        )
+      );
+
+      const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const textResponse = await response.text();
+      console.log("Full response:", textResponse);
+
+      showToast({
+        title: "Success",
+        description: "WhatsApp message sent successfully!",
+      });
+      setSelectedDocs([]);
+      return true;
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      showToast({
+        title: "Error",
+        description: "Network error. Please check your connection.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownloadDocument = (imageUrl: string, documentName: string) => {
+    if (!imageUrl) {
+      showToast({
+        title: "No image available",
+        description: "This document doesn't have an image to download",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let downloadUrl = imageUrl;
+
+    if (imageUrl.includes("drive.google.com")) {
+      const fileId = imageUrl.match(/[-\w]{25,}/)?.[0];
+      if (fileId) {
+        downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      }
+    }
+
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute(
+      "download",
+      `${documentName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg` ||
+        "document.jpg"
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast({
+      title: "Download started",
+      description: `Downloading ${documentName}`,
+    });
+  };
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -854,14 +860,11 @@ const handleFilterChange = (value: DocumentFilter) => {
       return;
     }
     setMounted(true);
-
-    if (documents.length === 0) {
-      fetchDocuments();
-    }
+    fetchDocuments();
   }, [isLoggedIn, router]);
 
   useEffect(() => {
-    const filter = searchParams.get("filter") as DocumentFilter;
+    const filter = searchParams.get("filter") as DocumentFilter | null;
     if (filter) {
       setCurrentFilter(filter);
     }
@@ -870,6 +873,8 @@ const handleFilterChange = (value: DocumentFilter) => {
   if (!mounted || !isLoggedIn) {
     return <LoadingSpinner />;
   }
+
+  // ================== JSX (unchanged) ==================
 
   return (
     <div className="p-4 sm:p-6 md:p-8 pt-16 md:pt-8 max-w-[1200px] mx-auto">
@@ -973,13 +978,13 @@ const handleFilterChange = (value: DocumentFilter) => {
                       Renewal Date:
                     </label>
                     <div className="col-span-3">
-                      <DatePicker
-                        id="renewalDate"
-                        value={tempRenewalDate}
-                        onChange={setTempRenewalDate}
-                        placeholder="Select renewal date"
-                        className="w-full"
-                      />
+                    <DatePicker
+  value={tempRenewalDate}
+  onChange={setTempRenewalDate}
+  placeholder="Select renewal date"
+  className="w-full"
+/>
+
                     </div>
                   </div>
 
