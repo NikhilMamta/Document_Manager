@@ -144,6 +144,7 @@ const formatDateTimeDisplay = (dateString: string): string => {
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
     const seconds = date.getSeconds().toString().padStart(2, "0");
+    
 
     if (hours === "00" && minutes === "00" && seconds === "00") {
       const now = new Date();
@@ -172,7 +173,7 @@ const formatImageUrl = (url: string): string => {
   }
   return url;
 };
-
+const[Loding,setIsLoading]=useState();
 const handleShareWhatsApp = async (number: string) => {
   try {
     setIsLoading(true);
