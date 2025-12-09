@@ -85,6 +85,17 @@ interface Document {
 
 type DocumentFilter = "All" | "Personal" | "Company" | "Director" | "Renewal";
 
+type AppToastOptions = {
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
+};
+
+const showToast = (options: AppToastOptions) => {
+  const { variant: _variant, ...rest } = options;
+  toast(rest);
+};
+
 const formatDateToDDMMYYYY = (dateString: string): string => {
   if (!dateString) return "";
 
@@ -153,7 +164,10 @@ const formatDateTimeDisplay = (dateString: string): string => {
       return `${day}/${month}/${year} || ${now
         .getHours()
         .toString()
-        .padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now
+        .padStart(2, "0")}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}:${now
         .getSeconds()
         .toString()
         .padStart(2, "0")}`;
@@ -170,13 +184,12 @@ const isDatePastToday = (dateString: string): boolean => {
   if (!dateString) return false;
 
   try {
-    // Parse the date in DD/MM/YYYY HH:mm format
-    const [datePart, timePart] = dateString.split(" ");
+    const [datePart] = dateString.split(" ");
     const [day, month, year] = datePart.split("/").map(Number);
-    
+
     const renewalDate = new Date(year, month - 1, day);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time part for accurate comparison
+    today.setHours(0, 0, 0, 0);
 
     return renewalDate < today;
   } catch (error) {
@@ -209,21 +222,24 @@ export default function DocumentsList() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [shareMethod, setShareMethod] = useState<"email" | "whatsapp" | "both" | null>(
-    null
-  );
+  const [shareMethod, setShareMethod] = useState<
+    "email" | "whatsapp" | "both" | null
+  >(null);
   const [documentTypes, setDocumentTypes] = useState<string[]>([]);
   const [whatsappPopupOpen, setWhatsappPopupOpen] = useState(false);
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string>("All");
+  const [selectedDocumentType, setSelectedDocumentType] =
+    useState<string>("All");
   const [mounted, setMounted] = useState(false);
-  const [currentFilter, setCurrentFilter] = useState<DocumentFilter>("All");
+  const [currentFilter, setCurrentFilter] =
+    useState<DocumentFilter>("All");
   const [editingRenewalDocId, setEditingRenewalDocId] = useState<number | null>(
     null
   );
   const [tempRenewalDate, setTempRenewalDate] = useState<Date | undefined>(
     undefined
   );
-  const [tempNeedsRenewal, setTempNeedsRenewal] = useState<boolean>(false);
+  const [tempNeedsRenewal, setTempNeedsRenewal] =
+    useState<boolean>(false);
   const [emailData, setEmailData] = useState({
     to: "",
     name: "",
@@ -231,34 +247,42 @@ export default function DocumentsList() {
     message: "",
   });
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(
+    null
+  );
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(
+    null
+  );
+  const [currentUserName, setCurrentUserName] = useState<string | null>(
+    null
+  );
 
-useEffect(() => {
-  if (!isLoggedIn) {
-    router.push("/login");
-    return;
-  }
-  setMounted(true);
-  setCurrentUserRole(userRole);
-  setCurrentUserName(userName);
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+    setMounted(true);
+    setCurrentUserRole(userRole);
+    setCurrentUserName(userName);
 
-  const search = searchParams.get("search");
-  if (search) {
-    setSearchTerm(search);
-  }
+    const search = searchParams.get("search");
+    if (search) {
+      setSearchTerm(search);
+    }
 
-  const filter = searchParams.get("filter") as DocumentFilter;
-  if (filter && ["Personal", "Company", "Director", "Renewal"].includes(filter)) {
-    setCurrentFilter(filter);
-  }
+    const filter = searchParams.get("filter") as DocumentFilter;
+    if (
+      filter &&
+      ["Personal", "Company", "Director", "Renewal"].includes(filter)
+    ) {
+      setCurrentFilter(filter);
+    }
 
-  // Only fetch documents if we haven't loaded them yet
-  if (documents.length === 0) {
-    fetchDocuments();
-  }
-}, [isLoggedIn, router, searchParams, userRole, userName]);
+    if (documents.length === 0) {
+      fetchDocuments();
+    }
+  }, [isLoggedIn, router, searchParams, userRole, userName]);
 
   const fetchDocuments = async () => {
     setIsLoading(true);
@@ -282,669 +306,661 @@ useEffect(() => {
         masterResponse.json(),
       ]);
 
-      // Process document types from Master sheet
       if (masterData.success && masterData.data) {
         const types = masterData.data
-          .slice(1) // Skip header row
-          .map((row: any[]) => row[0]) // Column A contains document types
-          .filter((type: string) => type) // Remove empty values
-          .filter((value: string, index: number, self: string[]) => 
-            self.indexOf(value) === index // Remove duplicates
+          .slice(1)
+          .map((row: any[]) => row[0])
+          .filter((type: string) => type)
+          .filter(
+            (value: string, index: number, self: string[]) =>
+              self.indexOf(value) === index
           );
         setDocumentTypes(types);
-      } 
-        let allDocs: Document[] = [];
-        const serialNoMap = new Map<string, Document>(); // To track duplicates by serialNo
+      }
 
-        // Helper function to process and merge documents
-        const processDocument = (doc: Document) => {
-          if (!doc.serialNo) {
-            // If no serialNo, just add it
-            allDocs.push(doc);
-            return;
+      let allDocs: Document[] = [];
+      const serialNoMap = new Map<string, Document>();
+
+      const processDocument = (doc: Document) => {
+        if (!doc.serialNo) {
+          allDocs.push(doc);
+          return;
+        }
+
+        const existingDoc = serialNoMap.get(doc.serialNo);
+        if (existingDoc) {
+          const existingDate = new Date(existingDoc.timestamp);
+          const newDate = new Date(doc.timestamp);
+
+          if (newDate > existingDate) {
+            const mergedDoc: Document = {
+              ...existingDoc,
+              ...doc,
+              timestamp: doc.timestamp,
+              tags: [...new Set([...existingDoc.tags, ...doc.tags])],
+              name: doc.name || existingDoc.name,
+              documentType: doc.documentType || existingDoc.documentType,
+              category: doc.category || existingDoc.category,
+              company: doc.company || existingDoc.company,
+              personName: doc.personName || existingDoc.personName,
+              needsRenewal: doc.needsRenewal || existingDoc.needsRenewal,
+              renewalDate: doc.renewalDate || existingDoc.renewalDate,
+              imageUrl: doc.imageUrl || existingDoc.imageUrl,
+              email: doc.email || existingDoc.email,
+              mobile: doc.mobile || existingDoc.mobile,
+            };
+
+            serialNoMap.set(doc.serialNo, mergedDoc);
+            const index = allDocs.findIndex(
+              (d) => d.id === existingDoc.id
+            );
+            if (index !== -1) {
+              allDocs[index] = mergedDoc;
+            }
           }
+        } else {
+          serialNoMap.set(doc.serialNo, doc);
+          allDocs.push(doc);
+        }
+      };
 
-          const existingDoc = serialNoMap.get(doc.serialNo);
-          if (existingDoc) {
-            // Merge with existing document, preferring newer data
-            const existingDate = new Date(existingDoc.timestamp);
-            const newDate = new Date(doc.timestamp);
+      if (documentsData.success && documentsData.data) {
+        const documentsSheetData = documentsData.data
+          .slice(1)
+          .map((doc: any[], index: number) => {
+            const isDeleted =
+              doc[14] &&
+              (doc[14] === "DELETED" ||
+                doc[14] === "Deleted" ||
+                doc[14] === "deleted");
 
-            if (newDate > existingDate) {
-              // If the new document is more recent, merge it with the existing one
-              const mergedDoc: Document = {
-                ...existingDoc,
-                ...doc,
-                // Keep the most recent timestamp
-                timestamp: doc.timestamp,
-                // Combine tags
-                tags: [...new Set([...existingDoc.tags, ...doc.tags])],
-                // Prefer non-empty values from the newer document
-                name: doc.name || existingDoc.name,
-                documentType: doc.documentType || existingDoc.documentType,
-                category: doc.category || existingDoc.category,
-                company: doc.company || existingDoc.company,
-                personName: doc.personName || existingDoc.personName,
-                needsRenewal: doc.needsRenewal || existingDoc.needsRenewal,
-                renewalDate: doc.renewalDate || existingDoc.renewalDate,
-                imageUrl: doc.imageUrl || existingDoc.imageUrl,
-                email: doc.email || existingDoc.email,
-                mobile: doc.mobile || existingDoc.mobile,
-              };
+            return {
+              id: index + 1,
+              timestamp: doc[0]
+                ? new Date(doc[0]).toISOString()
+                : new Date().toISOString(),
+              serialNo: doc[1] || "",
+              name: doc[2] || "",
+              documentType: doc[3] || "Personal",
+              category: doc[4] || "",
+              company: doc[5] || "",
+              tags: doc[6]
+                ? String(doc[6])
+                    .split(",")
+                    .map((tag: string) => tag.trim())
+                : [],
+              personName: doc[7] || "",
+              needsRenewal: doc[8] === "TRUE" || doc[8] === "Yes" || false,
+              renewalDate: formatDateToDDMMYYYY(doc[9] || ""),
+              imageUrl: doc[11] || "",
+              email: doc[12] || "",
+              mobile: doc[13] ? String(doc[13]) : "",
+              sourceSheet: "Documents",
+              isDeleted: isDeleted,
+            };
+          })
+          .filter((doc: Document) => !doc.isDeleted);
 
-              // Update the map and array
-              serialNoMap.set(doc.serialNo, mergedDoc);
-              const index = allDocs.findIndex((d) => d.id === existingDoc.id);
-              if (index !== -1) {
-                allDocs[index] = mergedDoc;
+        documentsSheetData.forEach(processDocument);
+      }
+
+      if (renewalsData.success && renewalsData.data) {
+        const renewalDocs = renewalsData.data
+          .slice(1)
+          .map((doc: any[], index: number) => {
+            const renewalInfo = doc[9] || "";
+            let needsRenewal = false;
+            let renewalDate = "";
+
+            if (renewalInfo) {
+              const parsedDate = new Date(renewalInfo);
+              if (!isNaN(parsedDate.getTime())) {
+                needsRenewal = true;
+                renewalDate = formatDateToDDMMYYYY(renewalInfo);
+              } else {
+                needsRenewal =
+                  renewalInfo === "TRUE" ||
+                  renewalInfo === "Yes" ||
+                  renewalInfo === "Requires Renewal" ||
+                  renewalInfo.toLowerCase().includes("renew");
               }
             }
-          } else {
-            // Add new document to map and array
-            serialNoMap.set(doc.serialNo, doc);
-            allDocs.push(doc);
-          }
-        };
 
-        // Process Documents sheet
-        if (documentsData.success && documentsData.data) {
-          const documentsSheetData = documentsData.data
-            .slice(1)
-            .map((doc: any[], index: number) => {
-              const isDeleted =
-                doc[14] &&
-                (doc[14] === "DELETED" ||
-                  doc[14] === "Deleted" ||
-                  doc[14] === "deleted");
+            const isDeleted =
+              doc[14] &&
+              (doc[14] === "DELETED" ||
+                doc[14] === "Deleted" ||
+                doc[14] === "deleted");
 
-              return {
-                id: index + 1,
-                timestamp: doc[0]
-                  ? new Date(doc[0]).toISOString()
-                  : new Date().toISOString(),
-                serialNo: doc[1] || "",
-                name: doc[2] || "",
-                documentType: doc[3] || "Personal",
-                category: doc[4] || "",
-                company: doc[5] || "",
-                tags: doc[6]
-                  ? String(doc[6])
-                      .split(",")
-                      .map((tag: string) => tag.trim())
-                  : [],
-                personName: doc[7] || "",
-                needsRenewal: doc[8] === "TRUE" || doc[8] === "Yes" || false,
-                renewalDate: formatDateToDDMMYYYY(doc[9] || ""),
-                imageUrl: doc[11] || "",
-                email: doc[12] || "",
-                mobile: doc[13] ? String(doc[13]) : "",
-                sourceSheet: "Documents",
-                isDeleted: isDeleted,
-              };
-            })
-            .filter((doc) => !doc.isDeleted);
+            return {
+              id: index + 1000000,
+              timestamp: doc[0]
+                ? new Date(doc[0]).toISOString()
+                : new Date().toISOString(),
+              serialNo: doc[1] || "",
+              name: doc[3] || "",
+              documentType: "Renewal",
+              category: doc[5] || "",
+              company: doc[6] || "",
+              tags: doc[7]
+                ? String(doc[7])
+                    .split(",")
+                    .map((tag: string) => tag.trim())
+                : [],
+              personName: doc[10] || "",
+              needsRenewal: needsRenewal,
+              renewalDate: renewalDate,
+              imageUrl: doc[13] || "",
+              email: doc[11] || "",
+              mobile: doc[12] ? String(doc[12]) : "",
+              sourceSheet: "Updated Renewal",
+              isDeleted: isDeleted,
+            };
+          })
+          .filter((doc: Document) => !doc.isDeleted);
 
-          documentsSheetData.forEach(processDocument);
-        }
+        renewalDocs.forEach(processDocument);
+      }
 
-        // Process Updated Renewal sheet
-        if (renewalsData.success && renewalsData.data) {
-          const renewalDocs = renewalsData.data
-            .slice(1)
-            .map((doc: any[], index: number) => {
-              const renewalInfo = doc[9] || "";
-              let needsRenewal = false;
-              let renewalDate = "";
+      allDocs.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
 
-              if (renewalInfo) {
-                const parsedDate = new Date(renewalInfo);
-                if (!isNaN(parsedDate.getTime())) {
-                  needsRenewal = true;
-                  renewalDate = formatDateToDDMMYYYY(renewalInfo);
-                } else {
-                  needsRenewal =
-                    renewalInfo === "TRUE" ||
-                    renewalInfo === "Yes" ||
-                    renewalInfo === "Requires Renewal" ||
-                    renewalInfo.toLowerCase().includes("renew");
-                }
-              }
+      allDocs = allDocs.map((doc, index) => ({ ...doc, id: index + 1 }));
 
-              const isDeleted =
-                doc[14] &&
-                (doc[14] === "DELETED" ||
-                  doc[14] === "Deleted" ||
-                  doc[14] === "deleted");
-
-              return {
-                id: index + 1000000,
-                timestamp: doc[0]
-                  ? new Date(doc[0]).toISOString()
-                  : new Date().toISOString(),
-                serialNo: doc[1] || "",
-                name: doc[3] || "",
-                documentType: "Renewal",
-                category: doc[5] || "",
-                company: doc[6] || "",
-                tags: doc[7]
-                  ? String(doc[7])
-                      .split(",")
-                      .map((tag: string) => tag.trim())
-                  : [],
-                personName: doc[10] || "",
-                needsRenewal: needsRenewal,
-                renewalDate: renewalDate,
-                imageUrl: doc[13] || "",
-                email: doc[11] || "",
-                mobile: doc[12] ? String(doc[12]) : "",
-                sourceSheet: "Updated Renewal",
-                isDeleted: isDeleted,
-              };
-            })
-            .filter((doc) => !doc.isDeleted);
-
-          renewalDocs.forEach(processDocument);
-        }
-
-        allDocs.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-
-        // Assign sequential IDs based on the sorted order to maintain consistency
-        allDocs = allDocs.map((doc, index) => ({ ...doc, id: index + 1 }));
-        // If user is admin, show all documents
-        if (userRole && userRole.toString().toLowerCase() === "admin") {
-          setDocuments(allDocs);
-          return;
-        }
-
-        // For non-admin users, filter documents by their name
-        if (userName) {
-          allDocs = allDocs.filter(
-            (doc) =>
-              doc.personName &&
-              doc.personName.toLowerCase() === userName.toLowerCase()
-          );
-        }
-
+      if (userRole && userRole.toString().toLowerCase() === "admin") {
         setDocuments(allDocs);
-      } catch (error) {
-        console.error("Error fetching documents:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch documents",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
 
-    const handleDeleteDocument = async (docId: number) => {
-      try {
-        setIsLoading(true);
-        const docToDelete = documents.find((doc) => doc.id === docId);
-        if (!docToDelete) {
-          toast({
-            title: "Error",
-            description: "Document not found",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Create FormData for more reliable data sending
-        const formData = new FormData();
-        formData.append("action", "markDeleted");
-        formData.append("sheetName", docToDelete.sourceSheet);
-        formData.append("serialNo", docToDelete.serialNo);
-        formData.append("timestamp", docToDelete.timestamp);
-        formData.append("deletionMarker", "DELETED"); // Explicitly send the deletion marker
-
-        const response = await fetch(
-          "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
-          {
-            method: "POST",
-            body: formData,
-          }
+      if (userName) {
+        allDocs = allDocs.filter(
+          (doc) =>
+            doc.personName &&
+            doc.personName.toLowerCase() === userName.toLowerCase()
         );
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Update local state to reflect deletion
-          setDocuments((prevDocs) => prevDocs.filter((doc) => doc.id !== docId));
-          setSelectedDocs((prevSelected) =>
-            prevSelected.filter((id) => id !== docId)
-          );
-
-          toast({
-            title: "Success",
-            description: "Document marked as deleted",
-          });
-        } else {
-          throw new Error(result.message || "Failed to mark document as deleted");
-        }
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast({
-          title: "Error",
-          description:
-            error instanceof Error ? error.message : "Failed to delete document",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
       }
-    };
 
-    const handleDownloadDocument = (imageUrl: string, documentName: string) => {
-      if (!imageUrl) {
-        toast({
-          title: "No image available",
-          description: "This document doesn't have an image to download",
+      setDocuments(allDocs);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      showToast({
+        title: "Error",
+        description: "Failed to fetch documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: number): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const docToDelete = documents.find((doc) => doc.id === docId);
+      if (!docToDelete) {
+        showToast({
+          title: "Error",
+          description: "Document not found",
           variant: "destructive",
         });
         return;
       }
 
-      // Extract file ID from Google Drive URL
-      const fileId = imageUrl.match(/[-\w]{25,}/)?.[0];
+      const formData = new FormData();
+      formData.append("action", "markDeleted");
+      formData.append("sheetName", docToDelete.sourceSheet);
+      formData.append("serialNo", docToDelete.serialNo);
+      formData.append("timestamp", docToDelete.timestamp);
+      formData.append("deletionMarker", "DELETED");
 
-      if (!fileId) {
-        // Fallback to direct download if not a Google Drive URL
-        const link = document.createElement("a");
-        link.href = imageUrl;
-        link.setAttribute(
-          "download",
-          `${documentName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg` ||
-            "document.jpg"
+      const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDocuments((prevDocs) =>
+          prevDocs.filter((doc) => doc.id !== docId)
         );
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        setSelectedDocs((prevSelected) =>
+          prevSelected.filter((id) => id !== docId)
+        );
+
+        showToast({
+          title: "Success",
+          description: "Document marked as deleted",
+        });
       } else {
-        // Use Google Drive's download URL
-        window.open(
-          `https://drive.google.com/uc?export=download&id=${fileId}`,
-          "_blank",
-          "noopener,noreferrer"
+        throw new Error(
+          result.message || "Failed to mark document as deleted"
         );
       }
-
-      toast({
-        title: "Download started",
-        description: `Downloading ${documentName}`,
+    } catch (error) {
+      console.error("Delete error:", error);
+      showToast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete document",
+        variant: "destructive",
       });
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const handleSaveRenewalDate = async (docId: number) => {
-      setIsLoading(true);
-      try {
-        const docToUpdate = documents.find((doc) => doc.id === docId);
-        if (!docToUpdate) {
-          toast({
-            title: "Error",
-            description: "Document not found",
-            variant: "destructive",
-          });
-          return;
-        }
+  const handleDownloadDocument = (
+    imageUrl: string,
+    documentName: string
+  ) => {
+    if (!imageUrl) {
+      showToast({
+        title: "No image available",
+        description: "This document doesn't have an image to download",
+        variant: "destructive",
+      });
+      return;
+    }
 
-        const formattedDate = tempRenewalDate
-          ? formatDateToDDMMYYYY(tempRenewalDate.toISOString())
-          : "";
+    const fileId = imageUrl.match(/[-\w]{25,}/)?.[0];
 
-        const formData = new FormData();
-        formData.append("action", "updateRenewal");
-        formData.append("sheetName", "Updated Renewal");
-        formData.append("documentId", docId.toString());
-        formData.append("documentName", docToUpdate.name);
-        formData.append("documentType", docToUpdate.documentType);
-        formData.append("category", docToUpdate.category);
-        formData.append("company", docToUpdate.company);
-        formData.append("personName", docToUpdate.personName);
-        formData.append("needsRenewal", tempNeedsRenewal.toString());
-        formData.append("renewalDate", formattedDate);
-        formData.append("email", docToUpdate.email);
-        formData.append("mobile", docToUpdate.mobile);
-        formData.append("imageUrl", docToUpdate.imageUrl);
-        formData.append("originalSerialNo", docToUpdate.serialNo);
-        formData.append("timestamp", new Date().toISOString()); // Current timestamp for new entries
+    if (!fileId) {
+      const link = document.createElement("a");
+      link.href = imageUrl;
+      link.setAttribute(
+        "download",
+        `${documentName
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}.jpg` || "document.jpg"
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      window.open(
+        `https://drive.google.com/uc?export=download&id=${fileId}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }
 
-        const response = await fetch(
-          "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+    showToast({
+      title: "Download started",
+      description: `Downloading ${documentName}`,
+    });
+  };
 
-        const result = await response.json();
-
-        if (result.success) {
-          // Create a new document with updated info
-          const updatedDoc = {
-            ...docToUpdate,
-            needsRenewal: tempNeedsRenewal,
-            renewalDate: formattedDate,
-            serialNo: result.newSerialNo || docToUpdate.serialNo,
-            timestamp: new Date().toISOString(), // Update timestamp to now
-          };
-
-          // Remove the old document and add the updated one at the top
-          setDocuments((prevDocs) => [
-            updatedDoc,
-            ...prevDocs.filter((doc) => doc.id !== docId),
-          ]);
-
-          toast({
-            title: "Success",
-            description: "Renewal information updated successfully",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: result.message || "Failed to update renewal information",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error updating renewal:", error);
-        toast({
+  const handleSaveRenewalDate = async (docId: number): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const docToUpdate = documents.find((doc) => doc.id === docId);
+      if (!docToUpdate) {
+        showToast({
           title: "Error",
-          description: "An error occurred while updating renewal information",
+          description: "Document not found",
           variant: "destructive",
         });
-      } finally {
-        setEditingRenewalDocId(null);
-        setTempRenewalDate(undefined);
-        setTempNeedsRenewal(false);
-        setIsLoading(false);
+        return;
       }
-    };
 
-    const handleCancelRenewalEdit = () => {
+      const formattedDate = tempRenewalDate
+        ? formatDateToDDMMYYYY(tempRenewalDate.toISOString())
+        : "";
+
+      const formData = new FormData();
+      formData.append("action", "updateRenewal");
+      formData.append("sheetName", "Updated Renewal");
+      formData.append("documentId", docId.toString());
+      formData.append("documentName", docToUpdate.name);
+      formData.append("documentType", docToUpdate.documentType);
+      formData.append("category", docToUpdate.category);
+      formData.append("company", docToUpdate.company);
+      formData.append("personName", docToUpdate.personName);
+      formData.append("needsRenewal", tempNeedsRenewal.toString());
+      formData.append("renewalDate", formattedDate);
+      formData.append("email", docToUpdate.email);
+      formData.append("mobile", docToUpdate.mobile);
+      formData.append("imageUrl", docToUpdate.imageUrl);
+      formData.append("originalSerialNo", docToUpdate.serialNo);
+      formData.append("timestamp", new Date().toISOString());
+
+      const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        const updatedDoc: Document = {
+          ...docToUpdate,
+          needsRenewal: tempNeedsRenewal,
+          renewalDate: formattedDate,
+          serialNo: result.newSerialNo || docToUpdate.serialNo,
+          timestamp: new Date().toISOString(),
+        };
+
+        setDocuments((prevDocs) => [
+          updatedDoc,
+          ...prevDocs.filter((doc) => doc.id !== docId),
+        ]);
+
+        showToast({
+          title: "Success",
+          description: "Renewal information updated successfully",
+        });
+      } else {
+        showToast({
+          title: "Error",
+          description:
+            result.message ||
+            "Failed to update renewal information",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating renewal:", error);
+      showToast({
+        title: "Error",
+        description:
+          "An error occurred while updating renewal information",
+        variant: "destructive",
+      });
+    } finally {
       setEditingRenewalDocId(null);
       setTempRenewalDate(undefined);
       setTempNeedsRenewal(false);
-    };
+      setIsLoading(false);
+    }
+  };
 
-const filteredDocuments = documents
-  .filter((doc) => !doc.isDeleted)
-  .filter((doc) => {
-    const matchesSearch =
-      doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.documentType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(doc.email).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(doc.mobile).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.serialNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.tags.some((tag) =>
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const handleCancelRenewalEdit = () => {
+    setEditingRenewalDocId(null);
+    setTempRenewalDate(undefined);
+    setTempNeedsRenewal(false);
+  };
 
-    const matchesFilter =
-      currentFilter === "All" ||
-      (currentFilter === "Renewal" && doc.needsRenewal) ||
-      doc.category === currentFilter;
+  const filteredDocuments = documents
+    .filter((doc) => !doc.isDeleted)
+    .filter((doc) => {
+      const matchesSearch =
+        doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.documentType.toLowerCase().includes(
+          searchTerm.toLowerCase()
+        ) ||
+        doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(doc.email)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        String(doc.mobile)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        doc.serialNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.tags.some((tag) =>
+          tag.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
-    const matchesDocumentType =
-      selectedDocumentType === "All" ||
-      doc.documentType === selectedDocumentType;
+      const matchesFilter =
+        currentFilter === "All" ||
+        (currentFilter === "Renewal" && doc.needsRenewal) ||
+        doc.category === currentFilter;
 
-    return matchesSearch && matchesFilter && matchesDocumentType;
-  });
+      const matchesDocumentType =
+        selectedDocumentType === "All" ||
+        doc.documentType === selectedDocumentType;
 
-    const selectedDocuments = documents.filter((doc) =>
+      return matchesSearch && matchesFilter && matchesDocumentType;
+    });
+
+  const selectedDocuments = documents.filter((doc) =>
+    selectedDocs.includes(doc.id)
+  );
+
+  const handleCheckboxChange = (id: number) => {
+    setSelectedDocs((prev) =>
+      prev.includes(id)
+        ? prev.filter((docId) => docId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleEmailShareClick = () => {
+    if (selectedDocs.length === 0) {
+      showToast({
+        title: "No documents selected",
+        description: "Please select at least one document to share",
+        variant: "destructive",
+      });
+      return;
+    }
+    setEmailData({
+      to: "",
+      name: "",
+      subject: "",
+      message: "",
+    });
+    setShareMethod("email");
+  };
+
+  const handleWhatsAppShareClick = () => {
+    if (selectedDocs.length === 0) {
+      showToast({
+        title: "No documents selected",
+        description: "Please select at least one document to share",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const firstSelectedDoc = documents.find((doc) =>
+      selectedDocs.includes(doc.id)
+    );
+    const autoFillNumber = firstSelectedDoc?.mobile || "";
+
+    setWhatsappNumber(autoFillNumber);
+    setShareMethod("whatsapp");
+  };
+
+  const handleShareBothClick = () => {
+    if (selectedDocs.length === 0) {
+      showToast({
+        title: "No documents selected",
+        description: "Please select at least one document to share",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const firstSelectedDoc = documents.find((doc) =>
       selectedDocs.includes(doc.id)
     );
 
-    const handleCheckboxChange = (id: number) => {
-      setSelectedDocs((prev) =>
-        prev.includes(id) ? prev.filter((docId) => docId !== id) : [...prev, id]
-      );
-    };
+    setEmailData({
+      to: firstSelectedDoc?.email || "",
+      name: firstSelectedDoc?.personName || "",
+      subject: `Document: ${firstSelectedDoc?.name || ""}`,
+      message: `Please find attached the document "${
+        firstSelectedDoc?.name || ""
+      }" (Serial No: ${firstSelectedDoc?.serialNo || ""}).`,
+    });
+    setWhatsappNumber(firstSelectedDoc?.mobile || "");
+    setShareMethod("both");
+  };
 
-    // Modified email share button click handler with auto-fill functionality
-    const handleEmailShareClick = () => {
-      if (selectedDocs.length === 0) {
-        toast({
-          title: "No documents selected",
-          description: "Please select at least one document to share",
-          variant: "destructive",
-        });
-        return;
-      }
-      // Do not autofill any email fields
-      setEmailData({
-        to: "",
-        name: "",
-        subject: "",
-        message: "",
+  const handleShareEmail = async (emailDataArg: {
+    to: string;
+    name: string;
+    subject: string;
+    message: string;
+  }): Promise<void> => {
+    try {
+      setIsLoading(true);
+
+      const formData = new FormData();
+      formData.append("action", "shareViaEmail");
+      formData.append("recipientEmail", emailDataArg.to);
+      formData.append("recipientName", emailDataArg.name || "");
+      formData.append("subject", emailDataArg.subject);
+      formData.append("message", emailDataArg.message);
+      formData.append(
+        "documents",
+        JSON.stringify(
+          selectedDocuments.map((doc) => ({
+            id: doc.id.toString(),
+            name: doc.name,
+            serialNo: doc.serialNo,
+            documentType: doc.documentType,
+            category: doc.category,
+            imageUrl: doc.imageUrl,
+            sourceSheet: doc.sourceSheet,
+          }))
+        )
+      );
+
+      const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const textResponse = await response.text();
+      console.log("Full response:", textResponse);
+
+      showToast({
+        title: "Success",
+        description: "Email sent successfully!",
       });
-      setShareMethod("email");
-    };
-
-    // WhatsApp share button click handler
-    const handleWhatsAppShareClick = () => {
-      if (selectedDocs.length === 0) {
-        toast({
-          title: "No documents selected",
-          description: "Please select at least one document to share",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get the first selected document's mobile number for auto-fill
-      const firstSelectedDoc = documents.find((doc) =>
-        selectedDocs.includes(doc.id)
-      );
-      const autoFillNumber = firstSelectedDoc?.mobile || "";
-
-      setWhatsappNumber(autoFillNumber);
-      setShareMethod("whatsapp");
-    };
-
-    // Share both button click handler
-    const handleShareBothClick = () => {
-      if (selectedDocs.length === 0) {
-        toast({
-          title: "No documents selected",
-          description: "Please select at least one document to share",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get the first selected document's details for auto-fill
-      const firstSelectedDoc = documents.find((doc) =>
-        selectedDocs.includes(doc.id)
-      );
-
-      setEmailData({
-        to: firstSelectedDoc?.email || "",
-        name: firstSelectedDoc?.personName || "",
-        subject: `Document: ${firstSelectedDoc?.name || ""}`,
-        message: `Please find attached the document "${firstSelectedDoc?.name || ""}" (Serial No: ${firstSelectedDoc?.serialNo || ""}).`,
+      setSelectedDocs([]);
+    } catch (error) {
+      console.error("Error sending email:", error);
+      showToast({
+        title: "Error",
+        description: "Network error. Please check your connection.",
+        variant: "destructive",
       });
-      setWhatsappNumber(firstSelectedDoc?.mobile || "");
-      setShareMethod("both");
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const handleShareEmail = async (emailData: {
+  const handleShareWhatsApp = async (number: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+
+      const formattedNumber = number.replace(/\D/g, "");
+
+      const formData = new FormData();
+      formData.append("action", "shareViaWhatsApp");
+      formData.append("recipientNumber", formattedNumber);
+
+      const documentsData = selectedDocuments.map((doc) => ({
+        id: doc.id.toString(),
+        name: doc.name,
+        serialNo: doc.serialNo,
+        documentType: doc.documentType,
+        category: doc.category,
+        imageUrl: doc.imageUrl,
+        sourceSheet: doc.sourceSheet,
+        mobile: formattedNumber,
+        recipientNumber: formattedNumber,
+        originalMobile: doc.mobile || "",
+      }));
+
+      formData.append("documents", JSON.stringify(documentsData));
+
+      const response = await fetch(
+        "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast({
+          title: "Success",
+          description: `WhatsApp message prepared for ${formattedNumber}`,
+        });
+      } else {
+        throw new Error(result.message || "Failed to share via WhatsApp");
+      }
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+      showToast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to share via WhatsApp",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleShareBoth = async (data: {
+    emailData: {
       to: string;
       name: string;
       subject: string;
       message: string;
-    }) => {
-      try {
-        setIsLoading(true);
-
-        // Create FormData
-        const formData = new FormData();
-        formData.append("action", "shareViaEmail");
-        formData.append("recipientEmail", emailData.to);
-        formData.append("recipientName", emailData.name || "");
-        formData.append("subject", emailData.subject);
-        formData.append("message", emailData.message);
-        formData.append(
-          "documents",
-          JSON.stringify(
-            selectedDocuments.map((doc) => ({
-              id: doc.id.toString(),
-              name: doc.name,
-              serialNo: doc.serialNo,
-              documentType: doc.documentType,
-              category: doc.category,
-              imageUrl: doc.imageUrl,
-              sourceSheet: doc.sourceSheet,
-            }))
-          )
-        );
-
-        const response = await fetch(
-          "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        const textResponse = await response.text();
-        console.log("Full response:", textResponse);
-
-        // Just assume success if we get any response
-        toast({
-          title: "Success",
-          description: "Email sent successfully!",
-        });
-        setSelectedDocs([]);
-        return true;
-      } catch (error) {
-        console.error("Error sending email:", error);
-        toast({
-          title: "Error",
-          description: "Network error. Please check your connection.",
-          variant: "destructive",
-        });
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
     };
+    whatsappNumber: string;
+  }): Promise<void> => {
+    await handleShareEmail(data.emailData);
+    await handleShareWhatsApp(data.whatsappNumber);
 
-const handleShareWhatsApp = async (number: string) => {
-  try {
-    setIsLoading(true);
-
-    // Format the number properly (remove all non-digit characters)
-    const formattedNumber = number.replace(/\D/g, '');
-
-    // Create FormData
-    const formData = new FormData();
-    formData.append("action", "shareViaWhatsApp");
-    formData.append("recipientNumber", formattedNumber); // Use the formatted number
-    
-    // Include all document details plus the recipient number
-    const documentsData = selectedDocuments.map((doc) => ({
-      id: doc.id.toString(),
-      name: doc.name,
-      serialNo: doc.serialNo,
-      documentType: doc.documentType,
-      category: doc.category,
-      imageUrl: doc.imageUrl,
-      sourceSheet: doc.sourceSheet,
-      mobile: formattedNumber, // Explicitly include the formatted number
-      recipientNumber: formattedNumber, // Include again for backward compatibility
-      originalMobile: doc.mobile || '' // Include original if exists
-    }));
-
-    formData.append("documents", JSON.stringify(documentsData));
-
-    const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const result = await response.json();
-    
-    if (result.success) {
-      toast({
-        title: "Success",
-        description: `WhatsApp message prepared for ${formattedNumber}`,
-      });
-      return true;
-    } else {
-      throw new Error(result.message || "Failed to share via WhatsApp");
-    }
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to share via WhatsApp",
-      variant: "destructive",
+    showToast({
+      title: "Success",
+      description: "Documents shared via both email and WhatsApp!",
     });
-    return false;
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
-    const handleShareBoth = async (data: {
-      emailData: {
-        to: string;
-        name: string;
-        subject: string;
-        message: string;
-      };
-      whatsappNumber: string;
-    }) => {
-      const emailSuccess = await handleShareEmail(data.emailData);
-      const whatsappSuccess = await handleShareWhatsApp(data.whatsappNumber);
-
-      if (emailSuccess && whatsappSuccess) {
-        toast({
-          title: "Success",
-          description: "Documents shared via both email and WhatsApp!",
-        });
-      }
-    };
-
-const handleFilterChange = (value: string) => {
-  setCurrentFilter(value as DocumentFilter);
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      if (value === "All") {
-        newSearchParams.delete("filter");
-      } else {
-        newSearchParams.set("filter", value);
-      }
-      router.push(`?${newSearchParams.toString()}`);
-    };
-
-    const handleEditRenewalClick = (doc: Document) => {
-      setEditingRenewalDocId(doc.id);
-      setTempRenewalDate(
-        doc.renewalDate
-          ? new Date(doc.renewalDate.split("/").reverse().join("-"))
-          : undefined
-      );
-      setTempNeedsRenewal(doc.needsRenewal);
-    };
-
-    if (!mounted || !isLoggedIn) {
-      return <LoadingSpinner />;
+  const handleFilterChange = (value: string) => {
+    setCurrentFilter(value as DocumentFilter);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    if (value === "All") {
+      newSearchParams.delete("filter");
+    } else {
+      newSearchParams.set("filter", value);
     }
+    router.push(`?${newSearchParams.toString()}`);
+  };
 
-    return (
-      
-      <div className="p-4 sm:p-6 md:p-8 pt-16 md:pt-8 max-w-[1200px] mx-auto h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-indigo-50 to-white">
-        <Toaster />
+  const handleEditRenewalClick = (doc: Document) => {
+    setEditingRenewalDocId(doc.id);
+    setTempRenewalDate(
+      doc.renewalDate
+        ? new Date(doc.renewalDate.split("/").reverse().join("-"))
+        : undefined
+    );
+    setTempNeedsRenewal(doc.needsRenewal);
+  };
+
+  if (!mounted || !isLoggedIn) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <div className="p-4 sm:p-6 md:p-8 pt-16 md:pt-8 max-w-[1200px] mx-auto h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-indigo-50 to-white">
+      <Toaster />
 
         {/* Fixed header section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4 sticky top-0  z-10 py-2 border-b border-indigo-100">
@@ -1302,7 +1318,7 @@ const handleFilterChange = (value: string) => {
                           <div className="flex gap-1 mt-1">
                             <Button
                               variant="outline"
-                              size="xs"
+                              size="sm"
                               onClick={() =>
                                 handleSaveRenewalDate(doc.id)
                               }
@@ -1313,7 +1329,7 @@ const handleFilterChange = (value: string) => {
                             </Button>
                             <Button
                               variant="ghost"
-                              size="xs"
+                              size="sm"
                               onClick={handleCancelRenewalEdit}
                               className="h-7 px-2 text-indigo-700 hover:bg-indigo-50 whitespace-nowrap"
                               disabled={isLoading}
@@ -1477,7 +1493,7 @@ const handleFilterChange = (value: string) => {
                             <div className="flex gap-1 mt-1">
                               <Button
                                 variant="outline"
-                                size="xs"
+                                size="sm"
                                 onClick={() => handleSaveRenewalDate(doc.id)}
                                 className="h-7 px-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
                                 disabled={isLoading}
@@ -1486,7 +1502,7 @@ const handleFilterChange = (value: string) => {
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="xs"
+                                size="sm"
                                 onClick={handleCancelRenewalEdit}
                                 className="h-7 px-2 text-indigo-700 hover:bg-indigo-50"
                                 disabled={isLoading}

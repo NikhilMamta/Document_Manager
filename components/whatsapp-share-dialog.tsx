@@ -1,8 +1,15 @@
 "use client"
 
-import React from "react" // Changed from 'import type React from "react"'
+import React from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FileText } from "lucide-react"
@@ -22,7 +29,7 @@ interface WhatsAppShareDialogProps {
     sourceSheet: string
     mobile: string
   }>
-  onShare: (number: string) => Promise<boolean>
+  onShare: (number: string) => Promise<void>   // <- yahan boolean ki jagah void
 }
 
 export function WhatsAppShareDialog({
@@ -37,13 +44,11 @@ export function WhatsAppShareDialog({
 
   const handleShare = async () => {
     if (!whatsappNumber) return
-    
+
     setIsSharing(true)
     try {
-      const success = await onShare(whatsappNumber)
-      if (success) {
-        onOpenChange(false)
-      }
+      await onShare(whatsappNumber)   // <- return value ignore karo
+      onOpenChange(false)
     } finally {
       setIsSharing(false)
     }
@@ -53,7 +58,9 @@ export function WhatsAppShareDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#7569F6]">Share Documents via WhatsApp</DialogTitle>
+          <DialogTitle className="text-[#7569F6]">
+            Share Documents via WhatsApp
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -64,7 +71,7 @@ export function WhatsAppShareDialog({
               type="tel"
               value={whatsappNumber}
               onChange={(e) => {
-                const num = e.target.value.replace(/\D/g, '')
+                const num = e.target.value.replace(/\D/g, "")
                 setWhatsappNumber(num)
               }}
               className="border-gray-300 focus:border-[#7569F6] focus:ring-[#7569F6]"
@@ -75,7 +82,9 @@ export function WhatsAppShareDialog({
           </div>
 
           <div>
-            <p className="text-sm font-medium text-[#7569F6]">Selected Documents:</p>
+            <p className="text-sm font-medium text-[#7569F6]">
+              Selected Documents:
+            </p>
             <div className="mt-2 max-h-32 overflow-y-auto border rounded-md p-2">
               <ul className="space-y-1">
                 {selectedDocuments.map((doc) => (
@@ -83,7 +92,9 @@ export function WhatsAppShareDialog({
                     <FileText className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
                     <span className="truncate">{doc.name}</span>
                     {doc.mobile && (
-                      <span className="ml-2 text-xs text-gray-500">(Original: {doc.mobile})</span>
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Original: {doc.mobile})
+                      </span>
                     )}
                   </li>
                 ))}
@@ -93,7 +104,10 @@ export function WhatsAppShareDialog({
         </div>
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <DialogClose asChild>
-            <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 w-full sm:w-auto"
+            >
               Cancel
             </Button>
           </DialogClose>
