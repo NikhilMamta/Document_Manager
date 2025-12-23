@@ -31,6 +31,7 @@ import {
   Loader2,
   Check,
   X as XIcon,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/use-toast";
@@ -58,6 +59,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 // ================== TYPES ==================
 
@@ -88,8 +94,7 @@ interface AppToastOptions {
 
 // helper: variant ko ignore karke existing toast use karega
 const showToast = (options: AppToastOptions) => {
-  const { variant: _variant, ...rest } = options;
-  toast(rest);
+  toast(options);
 };
 
 // ================== HELPERS ==================
@@ -168,12 +173,12 @@ const formatDateTimeDisplay = (dateString: string): string => {
         .getHours()
         .toString()
         .padStart(2, "0")}:${now
-        .getMinutes()
-        .toString()
-        .padStart(2, "0")}:${now
-        .getSeconds()
-        .toString()
-        .padStart(2, "0")}`;
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}:${now
+            .getSeconds()
+            .toString()
+            .padStart(2, "0")}`;
     }
 
     return `${day}/${month}/${year}`;
@@ -189,6 +194,52 @@ const formatImageUrl = (url: string): string => {
   if (url.includes("drive.google.com/file/d/")) {
     const fileId = url.split("/file/d/")[1].split("/")[0];
     return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  return url;
+};
+
+const getPreviewUrl = (url: string): string => {
+  if (!url) return "";
+  try {
+    let fileId = "";
+    if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        fileId = match[1];
+      } else if (url.includes("id=")) {
+        const urlObj = new URL(url);
+        fileId = urlObj.searchParams.get("id") || "";
+      }
+
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/preview`;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing URL for preview", e);
+  }
+  return url;
+};
+
+const getViewUrl = (url: string): string => {
+  if (!url) return "";
+  try {
+    let fileId = "";
+    if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        fileId = match[1];
+      } else if (url.includes("id=")) {
+        const urlObj = new URL(url);
+        fileId = urlObj.searchParams.get("id") || "";
+      }
+
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/view`;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing URL for view", e);
   }
   return url;
 };
@@ -424,8 +475,8 @@ export default function DocumentsList() {
             company: doc[5] || "",
             tags: doc[6]
               ? String(doc[6])
-                  .split(",")
-                  .map((tag: string) => tag.trim())
+                .split(",")
+                .map((tag: string) => tag.trim())
               : [],
             personName: doc[7] || "",
             needsRenewal: doc[8] === "TRUE" || doc[8] === "Yes" || false,
@@ -434,19 +485,46 @@ export default function DocumentsList() {
             email: doc[12] || "",
             mobile: doc[13] ? String(doc[13]) : "",
           }))
-          .filter(
-            (doc: Document) =>
-              userRole?.toLowerCase() === "admin" ||
-              doc.personName?.toLowerCase() === userName?.toLowerCase()
-          );
-
         docs.sort(
           (a: Document, b: Document) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
+
       }
 
+      // Apply role-based filtering using the logic from the second component
+      const userRoleLower = userRole ? userRole.toString().toLowerCase() : "";
+      if (userRoleLower === "admin") {
+        // Admin: Show only 'personal' and 'company' categories
+        docs = docs.filter(doc =>
+          doc.category && (doc.category.toLowerCase() === "company" ||
+            doc.category.toLowerCase() === "personal" ||
+            doc.category.toLowerCase() === "director")
+        );
+        setDocuments(docs);
+        return;
+      } else if (userRoleLower === "director") {
+        // Director: Can access all three categories (company, personal, director)
+        docs = docs.filter(doc =>
+          doc.category && (doc.category.toLowerCase() === "director"
+          )
+        );
+        setDocuments(docs);
+        return;
+      }
+      // Regular User: Show only Personal category and their own documents
+      if (userName) {
+        docs = docs.filter(
+          (doc) =>
+            doc.personName &&
+            doc.personName.toLowerCase() === userName.toLowerCase() &&
+            doc.category &&
+            doc.category.toLowerCase() === "personal"
+        );
+      }
       setDocuments(docs);
+
+
     } catch (error) {
       console.error("Error fetching documents:", error);
       showToast({
@@ -477,7 +555,11 @@ export default function DocumentsList() {
       formData.append("action", "uploadFile");
       formData.append("fileName", file.name);
       formData.append("mimeType", file.type);
-      formData.append("folderId", "11V1EIg3Aa4xKrbHjVz6c1M-CocM-SUIr");
+      formData.append("parentFolderId", "11V1EIg3Aa4xKrbHjVz6c1M-CocM-SUIr");
+      formData.append(
+        "entityFolderName",
+        editingRenewalDoc?.category || "Personal"
+      );
       formData.append("base64Data", base64String);
 
       const response = await fetch(
@@ -495,6 +577,7 @@ export default function DocumentsList() {
       const result = await response.json();
 
       if (!result.success || !result.fileUrl) {
+        console.error("Upload failed result:", result);
         throw new Error(result.message || "Upload failed");
       }
 
@@ -535,14 +618,14 @@ export default function DocumentsList() {
         try {
           const uploadedUrl = await handleImageUpload(selectedImage);
           if (!uploadedUrl) {
-            throw new Error("Image upload failed - no URL returned");
+            throw new Error("Document upload failed - no URL returned");
           }
           newImageUrl = uploadedUrl;
         } catch (uploadError) {
           console.error("Image upload error:", uploadError);
           showToast({
             title: "Upload Error",
-            description: "Failed to upload image. Please try again.",
+            description: "Failed to upload document. Please try again.",
             variant: "destructive",
           });
           return;
@@ -552,7 +635,7 @@ export default function DocumentsList() {
       if (tempNeedsRenewal && !newImageUrl) {
         showToast({
           title: "Error",
-          description: "Image is required for document renewal",
+          description: "Document is required for renewal",
           variant: "destructive",
         });
         return;
@@ -560,16 +643,15 @@ export default function DocumentsList() {
 
       const formattedDate = tempRenewalDate
         ? `${tempRenewalDate
-            .getDate()
-            .toString()
-            .padStart(2, "0")}/${(tempRenewalDate.getMonth() + 1)
+          .getDate()
+          .toString()
+          .padStart(2, "0")}/${(tempRenewalDate.getMonth() + 1)
             .toString()
             .padStart(2, "0")}/${tempRenewalDate.getFullYear()}`
         : "";
 
-      const renewalDateTime = `${formattedDate}${
-        tempRenewalTime ? " " + tempRenewalTime : ""
-      }`;
+      const renewalDateTime = `${formattedDate}${tempRenewalTime ? " " + tempRenewalTime : ""
+        }`;
 
       const formData = new FormData();
       formData.append("action", "updateRenewal");
@@ -601,12 +683,12 @@ export default function DocumentsList() {
           .map((doc) =>
             doc.id === editingRenewalDoc.id
               ? {
-                  ...doc,
-                  needsRenewal: tempNeedsRenewal,
-                  renewalDate: renewalDateTime,
-                  imageUrl: newImageUrl || doc.imageUrl,
-                  timestamp: new Date().toISOString(),
-                }
+                ...doc,
+                needsRenewal: tempNeedsRenewal,
+                renewalDate: renewalDateTime,
+                imageUrl: newImageUrl || doc.imageUrl,
+                timestamp: new Date().toISOString(),
+              }
               : doc
           )
           .sort(
@@ -617,7 +699,7 @@ export default function DocumentsList() {
 
       showToast({
         title: "Success",
-        description: `Renewal updated successfully`,
+        description: "Renewal details have been updated successfully.",
       });
 
       setEditingRenewalDoc(null);
@@ -726,6 +808,14 @@ export default function DocumentsList() {
         today.getMonth(),
         today.getDate() + 1
       );
+
+      const fifteenDaysFromNow = new Date(todayStart);
+      fifteenDaysFromNow.setDate(todayStart.getDate() + 15);
+      fifteenDaysFromNow.setHours(23, 59, 59, 999);
+
+      if (renewalDate > fifteenDaysFromNow) {
+        return false;
+      }
 
       if (currentFilter === "Renewal") {
         return matchesSearch;
@@ -842,7 +932,7 @@ export default function DocumentsList() {
     link.setAttribute(
       "download",
       `${documentName.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.jpg` ||
-        "document.jpg"
+      "document.jpg"
     );
     document.body.appendChild(link);
     link.click();
@@ -925,7 +1015,7 @@ export default function DocumentsList() {
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <span className="text-sm font-medium text-gray-700">
-                  Current Image:
+                  Current Document:
                 </span>
                 <div className="col-span-3">
                   {editingRenewalDoc.imageUrl ? (
@@ -936,11 +1026,11 @@ export default function DocumentsList() {
                       }
                       className="text-[#5477F6] hover:underline flex items-center"
                     >
-                      <ImageIcon className="h-4 w-4 mr-1" />
-                      View Current Image
+                      <FileText className="h-4 w-4 mr-1" />
+                      View Current Document
                     </button>
                   ) : (
-                    <span className="text-gray-500">No image available</span>
+                    <span className="text-gray-500">No document available</span>
                   )}
                 </div>
               </div>
@@ -975,15 +1065,15 @@ export default function DocumentsList() {
                       htmlFor="renewalDate"
                       className="text-sm font-medium text-gray-700"
                     >
-                      Renewal Date:
+                      End Date:
                     </label>
                     <div className="col-span-3">
-                    <DatePicker
-  value={tempRenewalDate}
-  onChange={setTempRenewalDate}
-  placeholder="Select renewal date"
-  className="w-full"
-/>
+                      <DatePicker
+                        value={tempRenewalDate}
+                        onChange={setTempRenewalDate}
+                        placeholder="Select renewal date"
+                        className="w-full"
+                      />
 
                     </div>
                   </div>
@@ -1011,27 +1101,26 @@ export default function DocumentsList() {
                       htmlFor="documentImage"
                       className="text-sm font-medium text-gray-700"
                     >
-                      New Image:
+                      New Document:
                     </label>
                     <div className="col-span-3">
                       <div className="flex items-center gap-2">
                         <label
                           htmlFor="documentImage"
-                          className={`text-sm font-medium ${
-                            !tempImageUrl ? "text-red-600" : "text-[#7569F6]"
-                          } cursor-pointer hover:text-[#935DF6] flex items-center gap-1 border border-input rounded-md px-3 py-2`}
+                          className={`text-sm font-medium ${!tempImageUrl ? "text-red-600" : "text-[#7569F6]"
+                            } cursor-pointer hover:text-[#935DF6] flex items-center gap-1 border border-input rounded-md px-3 py-2`}
                         >
-                          <ImageIcon className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                           {uploadingImage
                             ? "Uploading..."
                             : tempImageUrl
-                            ? "Change Image"
-                            : "Upload Image*"}
+                              ? "Change Document"
+                              : "Upload Document*"}
                         </label>
                         <input
                           id="documentImage"
                           type="file"
-                          accept="image/*"
+                          accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                           onChange={handleImageChange}
                           className="hidden"
                           disabled={uploadingImage}
@@ -1048,7 +1137,7 @@ export default function DocumentsList() {
                       </div>
                       {!tempImageUrl && tempNeedsRenewal && (
                         <p className="text-xs text-red-600 mt-1">
-                          Image is required for renewal
+                          Document is required for renewal
                         </p>
                       )}
                     </div>
@@ -1115,7 +1204,7 @@ export default function DocumentsList() {
             <Select
               onValueChange={handleFilterChange}
               value={currentFilter}
-              // No disabled state (filters work instantly)
+            // No disabled state (filters work instantly)
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by" />
@@ -1158,10 +1247,10 @@ export default function DocumentsList() {
                     {currentFilter === "Renewal"
                       ? "Documents Needing Renewal"
                       : currentFilter === "Overdue"
-                      ? "Overdue Renewals"
-                      : currentFilter === "Today"
-                      ? "Renewals Due Today"
-                      : "Upcoming Renewals"}
+                        ? "Overdue Renewals"
+                        : currentFilter === "Today"
+                          ? "Renewals Due Today"
+                          : "Upcoming Renewals"}
                   </CardTitle>
                   {currentFilter === "Renewal" && (
                     <div className="flex items-center gap-2">
@@ -1209,7 +1298,7 @@ export default function DocumentsList() {
                           Renewal
                         </TableHead>
                         <TableHead className="hidden md:table-cell p-2 md:p-4">
-                          Image
+                          Document
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1232,34 +1321,23 @@ export default function DocumentsList() {
                                     <span className="sr-only">Open menu</span>
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="border-[#7569F6]/20"
-                                >
+                                <DropdownMenuContent align="end" className="border-[#7569F6]/20">
                                   <DropdownMenuItem
                                     className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
-                                    onClick={() =>
-                                      handleDownloadDocument(
-                                        doc.imageUrl,
-                                        doc.name
-                                      )
-                                    }
+                                    onClick={() => handleDownloadDocument(doc.imageUrl, doc.name)}
                                   >
                                     <Download className="h-4 w-4 mr-2" />
                                     Download
                                   </DropdownMenuItem>
-                                  {userRole?.toLowerCase() === "admin" &&
-                                    isRenewalExpired(doc.renewalDate) && (
-                                      <DropdownMenuItem
-                                        className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
-                                        onClick={() =>
-                                          handleEditRenewalClick(doc)
-                                        }
-                                      >
-                                        <RefreshCw className="h-4 w-4 mr-2" />
-                                        Update Renewal
-                                      </DropdownMenuItem>
-                                    )}
+                                  {doc.needsRenewal && (
+                                    <DropdownMenuItem
+                                      className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
+                                      onClick={() => handleEditRenewalClick(doc)}
+                                    >
+                                      <RefreshCw className="h-4 w-4 mr-2" />
+                                      Update Renewal
+                                    </DropdownMenuItem>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -1291,13 +1369,12 @@ export default function DocumentsList() {
                             </TableCell>
                             <TableCell className="hidden md:table-cell p-2 md:p-4">
                               <Badge
-                                className={`${
-                                  doc.category === "Personal"
-                                    ? "bg-[#7569F6]/10 text-[#7569F6]"
-                                    : doc.category === "Company"
+                                className={`${doc.category === "Personal"
+                                  ? "bg-[#7569F6]/10 text-[#7569F6]"
+                                  : doc.category === "Company"
                                     ? "bg-[#5477F6]/10 text-[#5477F6]"
                                     : "bg-[#935DF6]/10 text-[#935DF6]"
-                                }`}
+                                  }`}
                               >
                                 {doc.category || "N/A"}
                               </Badge>
@@ -1317,15 +1394,14 @@ export default function DocumentsList() {
                               {doc.needsRenewal ? (
                                 <div className="flex items-center">
                                   <Badge
-                                    className={`${
-                                      getRenewalStatus(doc.renewalDate) ===
+                                    className={`${getRenewalStatus(doc.renewalDate) ===
                                       "overdue"
-                                        ? "bg-red-100 text-red-800" // Expired
-                                        : getRenewalStatus(doc.renewalDate) ===
-                                          "today"
+                                      ? "bg-red-100 text-red-800" // Expired
+                                      : getRenewalStatus(doc.renewalDate) ===
+                                        "today"
                                         ? "bg-yellow-100 text-yellow-800" // Today
                                         : "bg-[#935DF6]/10 text-[#935DF6]" // Upcoming
-                                    } flex items-center gap-1`}
+                                      } flex items-center gap-1`}
                                   >
                                     <RefreshCw className="h-3 w-3" />
                                     <span className="font-mono text-xs">
@@ -1341,15 +1417,57 @@ export default function DocumentsList() {
                                 <span className="text-gray-500 text-sm">-</span>
                               )}
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell p-2 md:p-4">
+                            <TableCell className="hidden lg:table-cell p-2 md:p-4 ">
                               {doc.imageUrl ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewImage(doc.imageUrl)}
-                                  className="text-[#5477F6] hover:underline"
-                                >
-                                  <ImageIcon className="h-5 w-5 mr-1" />
-                                </button>
+                                <HoverCard>
+                                  <HoverCardTrigger asChild>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleViewImage(doc.imageUrl)}
+                                      className="text-[#5477F6] hover:underline"
+                                    >
+                                      <ImageIcon className="h-5 w-5 mr-1" />
+                                    </button>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-[400px] sm:w-[500px] p-4">
+                                    <div className="flex flex-col gap-3">
+                                      <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-100 border border-slate-200">
+                                        <iframe
+                                          src={getPreviewUrl(doc.imageUrl)}
+                                          title={doc.name}
+                                          className="h-full w-full object-cover"
+                                          loading="lazy"
+                                          allowFullScreen
+                                        />
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="flex-1 text-[#7569F6] border-[#7569F6] hover:bg-[#7569F6]/10"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            window.open(getViewUrl(doc.imageUrl), "_blank");
+                                          }}
+                                        >
+                                          <ExternalLink className="h-4 w-4 mr-2" />
+                                          View
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="flex-1 bg-[#7569F6] hover:bg-[#935DF6]"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            handleDownloadDocument(doc.imageUrl, doc.name);
+                                          }}
+                                        >
+                                          <Download className="h-4 w-4 mr-2" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
                               ) : (
                                 "-"
                               )}
@@ -1402,13 +1520,12 @@ export default function DocumentsList() {
                     className="shadow-sm overflow-hidden border-[#7569F6]/20"
                   >
                     <div
-                      className={`p-3 border-l-4 ${
-                        doc.category === "Personal"
-                          ? "border-l-[#7569F6]"
-                          : doc.category === "Company"
+                      className={`p-3 border-l-4 ${doc.category === "Personal"
+                        ? "border-l-[#7569F6]"
+                        : doc.category === "Company"
                           ? "border-l-[#5477F6]"
                           : "border-l-[#935DF6]"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center min-w-0">
@@ -1440,29 +1557,23 @@ export default function DocumentsList() {
                               <span className="sr-only">Open menu</span>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="border-[#7569F6]/20"
-                          >
+                          <DropdownMenuContent align="end" className="border-[#7569F6]/20">
                             <DropdownMenuItem
                               className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
-                              onClick={() =>
-                                handleDownloadDocument(doc.imageUrl, doc.name)
-                              }
+                              onClick={() => handleDownloadDocument(doc.imageUrl, doc.name)}
                             >
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </DropdownMenuItem>
-                            {userRole?.toLowerCase() === "admin" &&
-                              isRenewalExpired(doc.renewalDate) && (
-                                <DropdownMenuItem
-                                  className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
-                                  onClick={() => handleEditRenewalClick(doc)}
-                                >
-                                  <RefreshCw className="h-4 w-4 mr-2" />
-                                  Update Renewal
-                                </DropdownMenuItem>
-                              )}
+                            {doc.needsRenewal && (
+                              <DropdownMenuItem
+                                className="cursor-pointer text-[#7569F6] hover:bg-[#7569F6]/10"
+                                onClick={() => handleEditRenewalClick(doc)}
+                              >
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                Update Renewal
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -1485,13 +1596,12 @@ export default function DocumentsList() {
                         )}
                         {doc.needsRenewal && (
                           <Badge
-                            className={`${
-                              getRenewalStatus(doc.renewalDate) === "overdue"
-                                ? "bg-red-100 text-red-800" // Expired
-                                : getRenewalStatus(doc.renewalDate) === "today"
+                            className={`${getRenewalStatus(doc.renewalDate) === "overdue"
+                              ? "bg-red-100 text-red-800" // Expired
+                              : getRenewalStatus(doc.renewalDate) === "today"
                                 ? "bg-yellow-100 text-yellow-800" // Today
                                 : "bg-[#935DF6]/10 text-[#935DF6]" // Upcoming
-                            } flex items-center gap-1 mt-2`}
+                              } flex items-center gap-1 mt-2`}
                           >
                             <RefreshCw className="h-3 w-3" />
                             <span className="font-mono text-xs">
@@ -1504,14 +1614,26 @@ export default function DocumentsList() {
                           </Badge>
                         )}
                         {doc.imageUrl && (
-                          <button
-                            type="button"
-                            onClick={() => handleViewImage(doc.imageUrl)}
-                            className="mt-1 flex items-center text-xs text-[#5477F6]"
-                          >
-                            <ImageIcon className="h-3 w-3 mr-1" />
-                            View Image
-                          </button>
+                          <div className="flex gap-3 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleViewImage(doc.imageUrl)}
+                              className="flex items-center text-xs text-[#5477F6] hover:text-[#7569F6]"
+                            >
+                              <ImageIcon className="h-3 w-3 mr-1" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDownloadDocument(doc.imageUrl, doc.name)
+                              }
+                              className="flex items-center text-xs text-[#5477F6] hover:text-[#7569F6]"
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              Download
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1521,7 +1643,8 @@ export default function DocumentsList() {
             )}
           </div>
         </>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }

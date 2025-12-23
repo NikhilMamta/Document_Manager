@@ -10,7 +10,9 @@ type AuthContextType = {
   userName: string | null
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
+  
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 

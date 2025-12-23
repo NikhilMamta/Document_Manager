@@ -12,10 +12,19 @@ import {
   User,
   Briefcase,
   Users,
+  Download,
+  Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth-provider";
+import { toast } from "@/components/ui/use-toast";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface SharedDocument {
   id: string;
@@ -31,6 +40,94 @@ interface SharedDocument {
   mobileNumber: string;
   imageUrl?: string;
 }
+
+
+const getPreviewUrl = (url: string): string => {
+  if (!url) return "";
+  try {
+    let fileId = "";
+    if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        fileId = match[1];
+      } else if (url.includes("id=")) {
+        const urlObj = new URL(url);
+        fileId = urlObj.searchParams.get("id") || "";
+      }
+
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/preview`;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing URL for preview", e);
+  }
+  return url;
+};
+
+const getViewUrl = (url: string): string => {
+  if (!url) return "";
+  try {
+    let fileId = "";
+    if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        fileId = match[1];
+      } else if (url.includes("id=")) {
+        const urlObj = new URL(url);
+        fileId = urlObj.searchParams.get("id") || "";
+      }
+
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/view`;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing URL for view", e);
+  }
+  return url;
+};
+
+const handleDownloadDocument = (
+  imageUrl: string | undefined,
+  documentName: string
+) => {
+  if (!imageUrl) {
+    toast({
+      title: "No file available",
+      description: "This document doesn't have a file to download",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const fileId = imageUrl.match(/[-\w]{25,}/)?.[0];
+
+  if (!fileId) {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.setAttribute(
+      "download",
+      `${documentName
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase()}.jpg` || "document.jpg"
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    window.open(
+      `https://drive.google.com/uc?export=download&id=${fileId}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  toast({
+    title: "Download started",
+    description: `Downloading ${documentName}`,
+  });
+};
 
 export default function SharedPage() {
   const router = useRouter();
@@ -52,14 +149,14 @@ export default function SharedPage() {
           const passResponse = await fetch(
             `https://script.google.com/macros/s/AKfycbyCyzcltZU3dV8VHe_zc2_GBuqZYPtOVtPqKEatrLtZs8cPQ2d47Ruy-vICmgDhfd-3/exec?sheet=Pass`
           );
-          
+
           if (passResponse.ok) {
             const passData = await passResponse.json();
             if (passData.success && passData.data) {
-              const userRow = passData.data.find((row: any[]) => 
+              const userRow = passData.data.find((row: any[]) =>
                 row[0]?.toString().toLowerCase() === userName.toLowerCase()
               );
-              
+
               if (userRow && userRow[3]?.toString().toLowerCase() === "admin") {
                 isAdmin = true;
               }
@@ -116,7 +213,7 @@ export default function SharedPage() {
             .sort((a, b) => b.rawTimestamp.getTime() - a.rawTimestamp.getTime());
 
           setSharedDocuments(documents);
-          
+
           if (isAdmin) {
             setFilteredDocuments(documents);
           } else {
@@ -216,11 +313,10 @@ export default function SharedPage() {
                         </Badge>
                         <Badge
                           variant="outline"
-                          className={`text-xs mr-2 ${
-                            doc.shareMethod === "Email"
-                              ? "bg-[#407FF6]/10 text-[#407FF6] border-[#407FF6]/30"
-                              : "bg-[#A555F7]/10 text-[#A555F7] border-[#A555F7]/30"
-                          }`}
+                          className={`text-xs mr-2 ${doc.shareMethod === "Email"
+                            ? "bg-[#407FF6]/10 text-[#407FF6] border-[#407FF6]/30"
+                            : "bg-[#A555F7]/10 text-[#A555F7] border-[#A555F7]/30"
+                            }`}
                         >
                           {doc.shareMethod === "Email" ? (
                             <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
@@ -242,6 +338,69 @@ export default function SharedPage() {
                       </div>
                     </div>
                   </div>
+                  {doc.imageUrl && (
+                    <div className="ml-4 flex-shrink-0">
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-[#7569F6] hover:text-[#935DF6] hover:bg-[#935DF6]/10"
+                            onClick={() => window.open(doc.imageUrl, "_blank")}
+                          >
+                            <ImageIcon className="h-5 w-5" />
+                          </Button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-[400px] sm:w-[500px] p-4">
+                          <div className="flex flex-col gap-3">
+                            <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-100 border border-slate-200">
+                              <iframe
+                                src={getPreviewUrl(doc.imageUrl)}
+                                title={doc.documentName}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                allowFullScreen
+                              />
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                                {doc.documentName}
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-[#7569F6] border-[#7569F6] hover:bg-[#7569F6]/10"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    window.open(getViewUrl(doc.imageUrl || ""), "_blank");
+                                  }}
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  View
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-[#7569F6] hover:bg-[#935DF6]"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleDownloadDocument(
+                                      doc.imageUrl,
+                                      doc.documentName
+                                    );
+                                  }}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    </div>
+                  )}
+
                   {userRole === "admin" && (
                     <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-11 sm:ml-0">
                       <Button
@@ -281,6 +440,6 @@ export default function SharedPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

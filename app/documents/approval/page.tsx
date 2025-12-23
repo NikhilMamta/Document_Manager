@@ -493,7 +493,7 @@ export default function ApprovalPage() {
                     <TableHeader className="bg-[#7569F6]/5">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="p-2 md:p-4 text-[#7569F6]">Serial No</TableHead>
-                        <TableHead className="p-2 md:p-4 text-[#7569F6]">
+                        <TableHead className="p-2 md:p-4 text-[#7569F6] ">
                           Document Name
                         </TableHead>
                         <TableHead className="hidden md:table-cell p-2 md:p-4 text-[#7569F6]">
